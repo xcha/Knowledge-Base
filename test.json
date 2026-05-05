@@ -1,0 +1,20 @@
+{
+  "preferences": {
+    "coworkScheduledTasksEnabled": false,
+    "ccdScheduledTasksEnabled": false,
+    "coworkWebSearchEnabled": true,
+    "legacyQuickEntryEnabled": true
+  },
+
+  "mcpServers": {
+    "ai-knowledge-base": {
+      "command": "node",
+      "args": ["e:/Code/ai-knowledge-base/apps/mcp/dist/index.js"],
+      "env": {
+        "KB_API_BASE": "http://localhost:3001/api",
+        "KB_API_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbW9ybDdsbXAwMDAwcTA5cDJ2Ym45c21vIiwiZW1haWwiOiIxMTIzOTUxMzk1QHFxLmNvbSIsImlhdCI6MTc3Nzk3NTkyMCwiZXhwIjoxNzc4NTgwNzIwfQ.N8v0H8Sxeob2RQAOi1bXjo9z0sr0NUz1M4C8PscB8GE",
+        "KB_ID": "proj-btoewT4hi2teypQsf2VL1"
+      }
+    }
+  }
+}

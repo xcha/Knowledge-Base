@@ -12,6 +12,7 @@ export declare class VectorService implements OnModuleInit {
         ids: string[];
         documents: string[];
         distances: number[];
+        metadatas: Record<string, string>[];
     }>;
     deleteByIds(collectionName: string, ids: string[]): Promise<void>;
     deleteCollection(collectionName: string): Promise<void>;

@@ -5,6 +5,7 @@
   "scripts": {
     "dev:server": "pnpm --filter server dev",
     "dev:web": "pnpm --filter web dev",
+    "dev:mcp": "pnpm --filter mcp dev",
     "dev": "pnpm run dev:server & pnpm run dev:web"
   }
 }

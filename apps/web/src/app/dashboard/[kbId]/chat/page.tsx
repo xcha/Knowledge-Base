@@ -5,6 +5,17 @@ import Link from 'next/link';
 import { chatApi, type ChatSession, type ChatMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
+type Mode = 'rag' | 'agent';
+
+interface ToolCallEvent {
+  toolCall: { name: string; input: unknown };
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  search_knowledge: '检索知识库',
+  get_document_list: '获取文档列表',
+};
+
 export default function ChatPage({ params }: { params: Promise<{ kbId: string }> }) {
   const { kbId } = use(params);
   const token = useAuthStore((s) => s.token);
@@ -14,6 +25,8 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>('rag');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,8 +73,8 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
     setInput('');
     setStreaming(true);
     setStreamingText('');
+    setActiveToolCall(null);
 
-    // 乐观更新：先把用户消息加入列表
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -70,19 +83,26 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
     };
     setMessages((prev) => [...prev, userMsg]);
 
+    const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+    const url =
+      mode === 'rag'
+        ? `${base}/knowledge/${kbId}/sessions/${activeSession}/chat`
+        : `${base}/knowledge/${kbId}/agent/chat`;
+
+    const body =
+      mode === 'rag'
+        ? { question }
+        : { question, sessionId: activeSession };
+
     try {
-      // 使用 fetch 直接处理 SSE 流，axios 不支持流式读取
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'}/knowledge/${kbId}/sessions/${activeSession}/chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ question }),
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify(body),
+      });
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -93,16 +113,31 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        // 解析 SSE 格式：每行 "data: {...}\n\n"
         const lines = chunk.split('\n').filter((l) => l.startsWith('data: '));
+
         for (const line of lines) {
-          const json = JSON.parse(line.slice(6));
+          let json: Record<string, unknown>;
+          try {
+            json = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
+
           if (json.text) {
-            aiText += json.text;
+            aiText += json.text as string;
             setStreamingText(aiText);
           }
+
+          if (json.toolCall) {
+            const tc = (json as unknown as ToolCallEvent).toolCall;
+            setActiveToolCall(TOOL_LABELS[tc.name] ?? tc.name);
+          }
+
+          if (json.toolResult) {
+            setActiveToolCall(null);
+          }
+
           if (json.done) {
-            // 流结束，将完整回复加入消息列表，清空流式文本
             const aiMsg: ChatMessage = {
               id: (Date.now() + 1).toString(),
               role: 'assistant',
@@ -118,21 +153,43 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
       setStreamingText('');
     } finally {
       setStreaming(false);
+      setActiveToolCall(null);
     }
   }
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      {/* 顶部导航 */}
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 shrink-0">
         <Link href={`/dashboard/${kbId}`} className="text-sm text-gray-500 hover:text-gray-900">
           ← 文档管理
         </Link>
         <h1 className="text-base font-semibold text-gray-900">知识库对话</h1>
+
+        <div className="ml-auto flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setMode('rag')}
+            className={`text-xs px-3 py-1.5 rounded-md transition ${
+              mode === 'rag'
+                ? 'bg-white text-gray-900 shadow-sm font-medium'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            RAG 模式
+          </button>
+          <button
+            onClick={() => setMode('agent')}
+            className={`text-xs px-3 py-1.5 rounded-md transition ${
+              mode === 'agent'
+                ? 'bg-white text-gray-900 shadow-sm font-medium'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Agent 模式
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* 左侧会话列表 */}
         <aside className="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
           <div className="p-3 border-b border-gray-100">
             <button
@@ -153,7 +210,10 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
               >
                 <span className="text-sm text-gray-700 truncate">{s.title}</span>
                 <button
-                  onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteSession(s.id);
+                  }}
                   className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition text-xs ml-1"
                 >
                   ✕
@@ -163,7 +223,6 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
           </div>
         </aside>
 
-        {/* 右侧对话区 */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {!activeSession ? (
             <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
@@ -171,7 +230,6 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
             </div>
           ) : (
             <>
-              {/* 消息列表 */}
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                 {messages.map((msg) => (
                   <div
@@ -189,7 +247,16 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
                     </div>
                   </div>
                 ))}
-                {/* 流式输出中的 AI 回复 */}
+
+                {activeToolCall && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-xs text-amber-700">
+                      <span className="animate-spin">⚙</span>
+                      正在{activeToolCall}...
+                    </div>
+                  </div>
+                )}
+
                 {streamingText && (
                   <div className="flex justify-start">
                     <div className="max-w-[70%] rounded-2xl px-4 py-2.5 text-sm bg-white border border-gray-200 text-gray-800 whitespace-pre-wrap">
@@ -201,7 +268,6 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
                 <div ref={bottomRef} />
               </div>
 
-              {/* 输入框 */}
               <div className="border-t border-gray-200 bg-white px-4 py-3 flex gap-2 shrink-0">
                 <textarea
                   value={input}
@@ -212,7 +278,11 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
                       sendMessage();
                     }
                   }}
-                  placeholder="输入问题，Enter 发送，Shift+Enter 换行"
+                  placeholder={
+                    mode === 'agent'
+                      ? 'Agent 模式：AI 会自主决定是否检索知识库'
+                      : '输入问题，Enter 发送，Shift+Enter 换行'
+                  }
                   rows={1}
                   className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />

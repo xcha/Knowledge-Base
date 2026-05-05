@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -64,6 +65,22 @@ export class KnowledgeController {
   @Get(':id/documents')
   listDocuments(@Param('id') knowledgeBaseId: string, @Request() req: AuthRequest) {
     return this.knowledge.listDocuments(knowledgeBaseId, req.user.id);
+  }
+
+  // MCP / 外部客户端用的语义检索接口
+  @Get(':id/search')
+  search(
+    @Param('id') knowledgeBaseId: string,
+    @Request() req: AuthRequest,
+    @Query('q') query: string,
+    @Query('topK') topK?: string,
+  ) {
+    return this.knowledge.searchDocuments(
+      knowledgeBaseId,
+      req.user.id,
+      query,
+      topK ? parseInt(topK, 10) : 5,
+    );
   }
 
   @Delete(':id/documents/:docId')
