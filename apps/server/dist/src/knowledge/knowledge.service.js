@@ -105,6 +105,35 @@ let KnowledgeService = class KnowledgeService {
             orderBy: { createdAt: 'desc' },
         });
     }
+    async searchDocuments(knowledgeBaseId, userId, query, topK = 5) {
+        const kb = await this.prisma.knowledgeBase.findFirst({
+            where: { id: knowledgeBaseId, userId },
+        });
+        if (!kb)
+            throw new common_1.NotFoundException('知识库不存在');
+        const embedding = await this.getEmbedding(query);
+        const result = await this.vector.query(`kb_${knowledgeBaseId}`, embedding, topK);
+        const documentIds = [
+            ...new Set(result.metadatas
+                .map((m) => m?.documentId)
+                .filter(Boolean)),
+        ];
+        const docMap = new Map();
+        if (documentIds.length) {
+            const docs = await this.prisma.document.findMany({
+                where: { id: { in: documentIds } },
+                select: { id: true, originalName: true },
+            });
+            docs.forEach((d) => docMap.set(d.id, d.originalName));
+        }
+        return {
+            chunks: result.documents.map((content, i) => ({
+                content,
+                documentName: docMap.get(result.metadatas[i]?.documentId ?? '') ?? '未知文档',
+                score: result.distances ? 1 - (result.distances[i] ?? 0) : 0,
+            })),
+        };
+    }
     async deleteDocument(documentId, userId) {
         const doc = await this.prisma.document.findFirst({
             where: { id: documentId, knowledgeBase: { userId } },

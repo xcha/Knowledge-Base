@@ -46,5 +46,12 @@ export declare class KnowledgeService {
         size: number;
         knowledgeBaseId: string;
     })[]>;
+    searchDocuments(knowledgeBaseId: string, userId: string, query: string, topK?: number): Promise<{
+        chunks: {
+            content: string;
+            documentName: string;
+            score: number;
+        }[];
+    }>;
     deleteDocument(documentId: string, userId: string): Promise<void>;
 }

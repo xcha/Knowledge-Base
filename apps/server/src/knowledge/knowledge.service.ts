@@ -132,6 +132,43 @@ export class KnowledgeService {
     });
   }
 
+  // MCP search 接口：向量检索，返回带文档名和相似度的片段
+  async searchDocuments(knowledgeBaseId: string, userId: string, query: string, topK = 5) {
+    const kb = await this.prisma.knowledgeBase.findFirst({
+      where: { id: knowledgeBaseId, userId },
+    });
+    if (!kb) throw new NotFoundException('知识库不存在');
+
+    const embedding = await this.getEmbedding(query);
+    const result = await this.vector.query(`kb_${knowledgeBaseId}`, embedding, topK);
+
+    // 从 Chroma metadata 里拿 documentId，再查文档名
+    const documentIds = [
+      ...new Set(
+        (result.metadatas as Array<{ documentId?: string }>)
+          .map((m) => m?.documentId)
+          .filter(Boolean) as string[],
+      ),
+    ];
+
+    const docMap = new Map<string, string>();
+    if (documentIds.length) {
+      const docs = await this.prisma.document.findMany({
+        where: { id: { in: documentIds } },
+        select: { id: true, originalName: true },
+      });
+      docs.forEach((d) => docMap.set(d.id, d.originalName));
+    }
+
+    return {
+      chunks: result.documents.map((content, i) => ({
+        content,
+        documentName: docMap.get((result.metadatas as Array<{ documentId?: string }>)[i]?.documentId ?? '') ?? '未知文档',
+        score: result.distances ? 1 - (result.distances[i] ?? 0) : 0,
+      })),
+    };
+  }
+
   async deleteDocument(documentId: string, userId: string) {
     const doc = await this.prisma.document.findFirst({
       where: { id: documentId, knowledgeBase: { userId } },

@@ -60,6 +60,7 @@ let VectorService = VectorService_1 = class VectorService {
             ids: result.ids[0],
             documents: result.documents[0],
             distances: result.distances?.[0],
+            metadatas: (result.metadatas?.[0] ?? []),
         };
     }
     async deleteByIds(collectionName, ids) {

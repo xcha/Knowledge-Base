@@ -44,5 +44,12 @@ export declare class KnowledgeController {
         size: number;
         knowledgeBaseId: string;
     })[]>;
+    search(knowledgeBaseId: string, req: AuthRequest, query: string, topK?: string): Promise<{
+        chunks: {
+            content: string;
+            documentName: string;
+            score: number;
+        }[];
+    }>;
     deleteDocument(docId: string, req: AuthRequest): Promise<void>;
 }

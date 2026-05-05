@@ -48,6 +48,9 @@ let KnowledgeController = class KnowledgeController {
     listDocuments(knowledgeBaseId, req) {
         return this.knowledge.listDocuments(knowledgeBaseId, req.user.id);
     }
+    search(knowledgeBaseId, req, query, topK) {
+        return this.knowledge.searchDocuments(knowledgeBaseId, req.user.id, query, topK ? parseInt(topK, 10) : 5);
+    }
     deleteDocument(docId, req) {
         return this.knowledge.deleteDocument(docId, req.user.id);
     }
@@ -94,6 +97,16 @@ __decorate([
     __metadata("design:paramtypes", [String, types_1.AuthRequest]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "listDocuments", null);
+__decorate([
+    (0, common_1.Get)(':id/search'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Query)('q')),
+    __param(3, (0, common_1.Query)('topK')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, types_1.AuthRequest, String, String]),
+    __metadata("design:returntype", void 0)
+], KnowledgeController.prototype, "search", null);
 __decorate([
     (0, common_1.Delete)(':id/documents/:docId'),
     __param(0, (0, common_1.Param)('docId')),

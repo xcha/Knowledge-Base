@@ -16,6 +16,7 @@ const auth_module_1 = require("./auth/auth.module");
 const knowledge_module_1 = require("./knowledge/knowledge.module");
 const chat_module_1 = require("./chat/chat.module");
 const vector_module_1 = require("./vector/vector.module");
+const agent_module_1 = require("./agent/agent.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -28,6 +29,7 @@ exports.AppModule = AppModule = __decorate([
             knowledge_module_1.KnowledgeModule,
             chat_module_1.ChatModule,
             vector_module_1.VectorModule,
+            agent_module_1.AgentModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

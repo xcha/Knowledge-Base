@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { ChatModule } from './chat/chat.module';
 import { VectorModule } from './vector/vector.module';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { VectorModule } from './vector/vector.module';
     KnowledgeModule,
     ChatModule,
     VectorModule,
+    AgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
