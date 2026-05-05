@@ -32,7 +32,7 @@ services:
       postgres:
         condition: service_healthy
     # 启动时自动执行数据库迁移
-    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
+    command: sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma && node dist/src/main.js"
 
   web:
     build:
