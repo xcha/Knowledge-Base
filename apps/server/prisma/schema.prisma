@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String
+  name           String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  knowledgeBases KnowledgeBase[]
+}
+
+model KnowledgeBase {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents   Document[]
+  sessions    ChatSession[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Document {
+  id              String          @id @default(cuid())
+  filename        String
+  originalName    String
+  mimeType        String
+  size            Int
+  knowledgeBaseId String
+  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  chunks          DocumentChunk[]
+  createdAt       DateTime        @default(now())
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  content    String
+  vectorId   String   // Chroma 中对应的向量 ID
+  chunkIndex Int
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+}
+
+model ChatSession {
+  id              String        @id @default(cuid())
+  title           String?
+  knowledgeBaseId String
+  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  messages        ChatMessage[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String   // user | assistant
+  content   String
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}

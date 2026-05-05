@@ -1,0 +1,73 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Request,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { KnowledgeService } from './knowledge.service';
+import { AuthRequest } from '../common/types';
+
+// 从上传的文件中提取纯文本内容
+// 目前支持 txt/md，PDF 解析后续可扩展
+async function extractText(file: Express.Multer.File): Promise<string> {
+  if (
+    file.mimetype === 'text/plain' ||
+    file.mimetype === 'text/markdown' ||
+    file.originalname.endsWith('.md') ||
+    file.originalname.endsWith('.txt')
+  ) {
+    return file.buffer.toString('utf-8');
+  }
+  throw new Error(`暂不支持的文件类型: ${file.mimetype}`);
+}
+
+@UseGuards(JwtAuthGuard)
+@Controller('knowledge')
+export class KnowledgeController {
+  constructor(private knowledge: KnowledgeService) {}
+
+  @Post()
+  create(@Request() req: AuthRequest, @Body() body: { name: string; description?: string }) {
+    return this.knowledge.createKnowledgeBase(req.user.id, body.name, body.description);
+  }
+
+  @Get()
+  list(@Request() req: AuthRequest) {
+    return this.knowledge.listKnowledgeBases(req.user.id);
+  }
+
+  @Delete(':id')
+  deleteKb(@Param('id') id: string, @Request() req: AuthRequest) {
+    return this.knowledge.deleteKnowledgeBase(id, req.user.id);
+  }
+
+  // 文件上传接口：multer 将文件存入内存 buffer，再交给 service 处理
+  @Post(':id/documents')
+  @UseInterceptors(FileInterceptor('file', { storage: undefined }))
+  async uploadDocument(
+    @Param('id') knowledgeBaseId: string,
+    @Request() req: AuthRequest,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const content = await extractText(file);
+    return this.knowledge.uploadDocument(knowledgeBaseId, req.user.id, file, content);
+  }
+
+  @Get(':id/documents')
+  listDocuments(@Param('id') knowledgeBaseId: string, @Request() req: AuthRequest) {
+    return this.knowledge.listDocuments(knowledgeBaseId, req.user.id);
+  }
+
+  @Delete(':id/documents/:docId')
+  deleteDocument(@Param('docId') docId: string, @Request() req: AuthRequest) {
+    return this.knowledge.deleteDocument(docId, req.user.id);
+  }
+}
