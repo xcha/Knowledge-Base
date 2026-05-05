@@ -24,9 +24,15 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/server/package.json ./apps/server/
 RUN pnpm install --frozen-lockfile --filter server --prod
 
+# 复制构建产物
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
-COPY --from=builder /app/apps/server/node_modules/.prisma ./apps/server/node_modules/.prisma
+
+# 复制 prisma schema 文件，以便在 runner 中生成 client
 COPY apps/server/prisma ./apps/server/prisma
+
+# 在 runner 环境中重新生成 Prisma Client
+# 这能解决 .prisma 路径找不到以及环境兼容性问题
+RUN cd apps/server && npx prisma generate
 
 WORKDIR /app/apps/server
 ENV NODE_ENV=production

@@ -20,7 +20,7 @@ services:
       dockerfile: apps/server/Dockerfile
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "5001:3001"
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/knowledge
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -39,10 +39,10 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5001/api}
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "5000:3000"
     depends_on:
       - server
 
