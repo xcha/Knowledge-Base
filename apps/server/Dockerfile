@@ -12,8 +12,8 @@ RUN pnpm install --frozen-lockfile --filter server
 FROM deps AS builder
 WORKDIR /app
 COPY apps/server ./apps/server
-RUN pnpm --filter server build
 RUN pnpm --filter server exec prisma generate
+RUN pnpm --filter server build
 
 # ---- runner ----
 FROM node:22-alpine AS runner
