@@ -20,7 +20,7 @@ services:
       dockerfile: apps/server/Dockerfile
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "5001:3001"
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/knowledge
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -32,17 +32,17 @@ services:
       postgres:
         condition: service_healthy
     # 启动时自动执行数据库迁移
-    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
+    command: sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma && node dist/src/main.js"
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5001/api}
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "5000:3000"
     depends_on:
       - server
 
