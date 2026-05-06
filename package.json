@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev:server": "pnpm --filter server dev",
+    "dev:server": "pnpm --filter server start:dev",
     "dev:web": "pnpm --filter web dev",
     "dev:mcp": "pnpm --filter mcp dev",
     "dev": "pnpm run dev:server & pnpm run dev:web"
