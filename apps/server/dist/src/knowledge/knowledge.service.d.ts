@@ -9,9 +9,9 @@ export declare class KnowledgeService {
     createKnowledgeBase(userId: string, name: string, description?: string): Promise<{
         id: string;
         name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
         userId: string;
     }>;
     listKnowledgeBases(userId: string): Promise<({
@@ -21,9 +21,9 @@ export declare class KnowledgeService {
     } & {
         id: string;
         name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
         userId: string;
     })[]>;
     deleteKnowledgeBase(id: string, userId: string): Promise<void>;

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
@@ -27,6 +27,17 @@ export class KnowledgeService {
   });
 
   async createKnowledgeBase(userId: string, name: string, description?: string) {
+    // 配额检查：不同会员等级有知识库数量上限
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      const count = await this.prisma.knowledgeBase.count({ where: { userId } });
+      if (count >= user.maxKnowledgeBases) {
+        throw new BadRequestException(
+          `知识库数量已达上限（${user.maxKnowledgeBases}个），请升级会员或删除旧知识库`,
+        );
+      }
+    }
+
     return this.prisma.knowledgeBase.create({
       data: { name, description, userId },
     });
@@ -61,6 +72,17 @@ export class KnowledgeService {
       where: { id: knowledgeBaseId, userId },
     });
     if (!kb) throw new NotFoundException('知识库不存在');
+
+    // 配额检查：文档总数上限
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      const docCount = await this.prisma.document.count({ where: { knowledgeBase: { userId } } });
+      if (docCount >= user.maxDocuments) {
+        throw new BadRequestException(
+          `文档总数已达上限（${user.maxDocuments}个），请升级会员`,
+        );
+      }
+    }
 
     // 1. 保存文档元信息到 PostgreSQL
     const doc = await this.prisma.document.create({

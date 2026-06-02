@@ -47,12 +47,77 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../prisma/prisma.service");
 const bcrypt = __importStar(require("bcryptjs"));
+const svgCaptcha = __importStar(require("svg-captcha"));
+const captchaStore = new Map();
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, val] of captchaStore) {
+        if (val.expiresAt < now)
+            captchaStore.delete(key);
+    }
+}, 5 * 60 * 1000);
 let AuthService = class AuthService {
     prisma;
     jwt;
     constructor(prisma, jwt) {
         this.prisma = prisma;
         this.jwt = jwt;
+    }
+    generateCaptcha() {
+        const captcha = svgCaptcha.create({
+            size: 4,
+            noise: 3,
+            color: true,
+            background: '#f0f0f0',
+            width: 120,
+            height: 42,
+            fontSize: 48,
+        });
+        const id = `cap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        captchaStore.set(id, {
+            text: captcha.text.toLowerCase(),
+            expiresAt: Date.now() + 5 * 60 * 1000,
+        });
+        return { id, svg: captcha.data };
+    }
+    verifyCaptcha(id, answer) {
+        const record = captchaStore.get(id);
+        if (!record)
+            return false;
+        captchaStore.delete(id);
+        if (record.expiresAt < Date.now())
+            return false;
+        return record.text === answer.toLowerCase().trim();
+    }
+    async sendSmsCode(phone, type = 'register') {
+        const recent = await this.prisma.smsCode.findFirst({
+            where: { phone, type, createdAt: { gte: new Date(Date.now() - 60 * 1000) } },
+        });
+        if (recent)
+            throw new common_1.BadRequestException('发送过于频繁，请60秒后再试');
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        await this.prisma.smsCode.create({
+            data: {
+                phone,
+                code,
+                type,
+                expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            },
+        });
+        console.log(`[SMS] 手机号 ${phone} 验证码: ${code}`);
+        return { success: true, code };
+    }
+    async verifySmsCode(phone, code, type) {
+        const record = await this.prisma.smsCode.findFirst({
+            where: { phone, code, type, used: false },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (!record)
+            return false;
+        if (record.expiresAt < new Date())
+            return false;
+        await this.prisma.smsCode.update({ where: { id: record.id }, data: { used: true } });
+        return true;
     }
     async register(email, password, name) {
         const exists = await this.prisma.user.findUnique({ where: { email } });
@@ -61,9 +126,28 @@ let AuthService = class AuthService {
         const hashed = await bcrypt.hash(password, 10);
         const user = await this.prisma.user.create({
             data: { email, password: hashed, name },
-            select: { id: true, email: true, name: true, createdAt: true },
+            select: { id: true, email: true, name: true, phone: true, membership: true, createdAt: true },
         });
         return { user, token: this.signToken(user.id, user.email) };
+    }
+    async registerByPhone(phone, smsCode, password, captchaId, captchaAnswer) {
+        if (captchaId && captchaAnswer) {
+            if (!this.verifyCaptcha(captchaId, captchaAnswer)) {
+                throw new common_1.BadRequestException('图片验证码错误');
+            }
+        }
+        const smsValid = await this.verifySmsCode(phone, smsCode, 'register');
+        if (!smsValid)
+            throw new common_1.BadRequestException('短信验证码错误或已过期');
+        const exists = await this.prisma.user.findUnique({ where: { phone } });
+        if (exists)
+            throw new common_1.ConflictException('手机号已被注册');
+        const hashed = await bcrypt.hash(password, 10);
+        const user = await this.prisma.user.create({
+            data: { phone, phoneVerified: true, email: `${phone}@phone.user`, password: hashed },
+            select: { id: true, email: true, name: true, phone: true, membership: true, createdAt: true },
+        });
+        return { user, token: this.signToken(user.id, user.phone ?? user.email) };
     }
     async login(email, password) {
         const user = await this.prisma.user.findUnique({ where: { email } });
@@ -73,7 +157,14 @@ let AuthService = class AuthService {
         if (!valid)
             throw new common_1.UnauthorizedException('邮箱或密码错误');
         return {
-            user: { id: user.id, email: user.email, name: user.name },
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                phone: user.phone,
+                membership: user.membership,
+                membershipExpiresAt: user.membershipExpiresAt,
+            },
             token: this.signToken(user.id, user.email),
         };
     }

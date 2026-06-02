@@ -32,6 +32,13 @@ let KnowledgeService = class KnowledgeService {
         modelName: 'voyage-3-lite',
     });
     async createKnowledgeBase(userId, name, description) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (user) {
+            const count = await this.prisma.knowledgeBase.count({ where: { userId } });
+            if (count >= user.maxKnowledgeBases) {
+                throw new common_1.BadRequestException(`知识库数量已达上限（${user.maxKnowledgeBases}个），请升级会员或删除旧知识库`);
+            }
+        }
         return this.prisma.knowledgeBase.create({
             data: { name, description, userId },
         });
@@ -58,6 +65,13 @@ let KnowledgeService = class KnowledgeService {
         });
         if (!kb)
             throw new common_1.NotFoundException('知识库不存在');
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (user) {
+            const docCount = await this.prisma.document.count({ where: { knowledgeBase: { userId } } });
+            if (docCount >= user.maxDocuments) {
+                throw new common_1.BadRequestException(`文档总数已达上限（${user.maxDocuments}个），请升级会员`);
+            }
+        }
         const doc = await this.prisma.document.create({
             data: {
                 filename: file.filename ?? file.originalname,

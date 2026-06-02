@@ -1,0 +1,46 @@
+graph LR
+    subgraph 表现层["表现层"]
+        WEB["Web 前端 Next.js<br/>React + Tailwind"]
+        CLAUDE_APP["Claude Desktop"]
+    end
+
+    subgraph 网关["网关"]
+        NGINX["Nginx<br/>反向代理 + HTTPS"]
+    end
+
+    subgraph 业务层["业务层 NestJS"]
+        AUTH["Auth<br/>认证鉴权"]
+        KB["Knowledge<br/>知识管理"]
+        CHAT["Chat<br/>RAG 对话"]
+        AGENT["Agent<br/>智能代理"]
+        PAY["Payment<br/>支付"]
+        USER["User<br/>用户/统计"]
+    end
+
+    subgraph AI层["AI 层"]
+        LANGCHAIN["LangChain<br/>编排框架"]
+        LANGGRAPH["LangGraph<br/>Agent 状态图"]
+        CLAUDE_API["Claude API<br/>LLM 推理"]
+        VOYAGE_API["Voyage AI<br/>文本嵌入"]
+    end
+
+    subgraph 数据层["数据层"]
+        PG[("PostgreSQL 16<br/>业务数据")]
+        CHROMA_CLOUD[("Chroma Cloud<br/>向量数据")]
+    end
+
+    subgraph 基础设施["基础设施"]
+        DOCKER["Docker Compose"]
+        MCP_SERVER["MCP Server<br/>stdio协议"]
+    end
+
+    WEB --> NGINX --> AUTH & KB & CHAT & AGENT & PAY & USER
+    CLAUDE_APP --> MCP_SERVER --> KB
+    KB --> LANGCHAIN
+    CHAT --> LANGCHAIN
+    AGENT --> LANGCHAIN & LANGGRAPH
+    LANGCHAIN --> VOYAGE_API
+    LANGCHAIN & LANGGRAPH --> CLAUDE_API
+    KB --> CHROMA_CLOUD
+    AUTH & KB & CHAT & AGENT & PAY & USER --> PG
+    DOCKER -.-> PG & NGINX

@@ -1,0 +1,124 @@
+graph TB
+    subgraph 客户端层["🖥 客户端层"]
+        A[Web 浏览器]
+        B[Claude Desktop]
+    end
+
+    subgraph 前端层["📱 前端层 - Next.js :5000"]
+        subgraph 页面["页面"]
+            P1["登录 / 注册<br/>邮箱 + 手机号 + 图片验证码"]
+            P2["知识库管理<br/>列表 + 创建 + 删除"]
+            P3["文档管理<br/>上传 + 列表 + 删除"]
+            P4["AI 对话<br/>RAG模式 + Agent模式"]
+            P5["会员中心<br/>套餐对比 + 购买"]
+            P6["数据看板<br/>ECharts图表"]
+        end
+        subgraph 前端公共["公共模块"]
+            FAPI["API 层 (Axios)<br/>自动挂载JWT + 401拦截"]
+            FSTORE["状态管理 (Zustand)<br/>用户信息 + Token持久化"]
+        end
+    end
+
+    subgraph 网关层["🔀 网关层 - Nginx"]
+        N1["反向代理 + HTTPS"]
+        N2["/ → :5000 (前端)"]
+        N3["/api/ → :5001 (后端)"]
+        N4["SSE 流式关闭缓冲"]
+    end
+
+    subgraph 后端层["⚙ 后端层 - NestJS :5001"]
+        subgraph 认证模块["🔐 Auth 模块"]
+            A1["邮箱注册/登录"]
+            A2["手机号注册<br/>短信验证码"]
+            A3["图片验证码<br/>svg-captcha"]
+            A4["JWT签发<br/>Passport鉴权"]
+            A5["JWT Guard<br/>全局路由保护"]
+        end
+
+        subgraph 知识管理["📄 Knowledge 模块"]
+            K1["CRUD 知识库<br/>配额检查"]
+            K2["文档上传<br/>txt/md 文本提取"]
+            K3["文档分块<br/>RecursiveCharacterTextSplitter"]
+            K4["向量嵌入<br/>Voyage AI → 512维"]
+            K5["文档列表/删除<br/>同步清理Chroma"]
+            K6["语义搜索 API<br/>给MCP调用"]
+        end
+
+        subgraph 对话模块["💬 Chat 模块"]
+            C1["会话管理<br/>创建/列表/删除"]
+            C2["消息历史<br/>最近10条"]
+            C3["RAG问答<br/>嵌入→检索→生成"]
+            C4["SSE流式输出<br/>data: {text}\n\n"]
+            C5["消息持久化<br/>存入PostgreSQL"]
+        end
+
+        subgraph 智能代理["🤖 Agent 模块"]
+            AG1["ReAct Agent<br/>LangGraph createReactAgent"]
+            AG2["tool: search_knowledge<br/>向量语义检索"]
+            AG3["tool: get_document_list<br/>数据库查询"]
+            AG4["streamEvents v2<br/>逐token + 工具事件"]
+            AG5["多轮工具调用<br/>自主决策"]
+        end
+
+        subgraph 向量存储["🧬 Vector 模块"]
+            V1["Chroma Cloud 连接<br/>余弦相似度"]
+            V2["Collection 管理<br/>按知识库隔离"]
+            V3["CRUD 操作<br/>增删查"]
+        end
+
+        subgraph 支付模块["💰 Payment 模块"]
+            PAY1["价格/配额查询"]
+            PAY2["创建支付订单<br/>唯一outTradeNo"]
+            PAY3["支付回调<br/>升级会员+更新配额"]
+            PAY4["订单历史"]
+        end
+
+        subgraph 用户模块["👤 User 模块"]
+            U1["用户档案<br/>会员状态/配额使用"]
+            U2["数据统计<br/>30天趋势聚合"]
+        end
+    end
+
+    subgraph 数据层["🗄 数据层"]
+        subgraph PG["PostgreSQL (结构化数据)"]
+            DB_USER["User<br/>会员/配额"]
+            DB_KB["KnowledgeBase"]
+            DB_DOC["Document"]
+            DB_CHUNK["DocumentChunk"]
+            DB_SESSION["ChatSession"]
+            DB_MSG["ChatMessage"]
+            DB_SMS["SmsCode"]
+            DB_PAY["PaymentOrder"]
+        end
+        CHROMA[("Chroma Cloud<br/>向量数据库<br/>每知识库一个Collection")]
+        CLAUDE[("Claude API<br/>claude-sonnet-4-6<br/>通过代理访问")]
+        VOYAGE[("Voyage AI<br/>voyage-3-lite<br/>文本→512维向量")]
+    end
+
+    subgraph MCP层["🔌 MCP 协议层"]
+        M1["MCP Server<br/>stdio transport"]
+        M2["tool: search_knowledge"]
+        M3["tool: list_documents"]
+    end
+
+    subgraph 部署层["🚀 部署层"]
+        D1["Docker Compose<br/>一键编排"]
+        D2["PostgreSQL 容器"]
+        D3["Server 容器<br/>auto migrate"]
+        D4["Web 容器<br/>standalone"]
+    end
+
+    %% 连接关系
+    A --> 前端层
+    B --> MCP层
+    前端层 --> 网关层
+    网关层 --> 后端层
+    后端层 --> PG
+    K4 --> VOYAGE
+    V1 --> CHROMA
+    C3 --> CLAUDE
+    AG1 --> CLAUDE
+    M1 --> M2 & M3
+    M2 --> K6
+    M3 --> K5
+    后端层 --> 部署层

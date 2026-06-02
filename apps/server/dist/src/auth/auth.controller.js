@@ -24,13 +24,44 @@ class LoginDto {
     email;
     password;
 }
+class SendSmsDto {
+    phone;
+    type;
+    captchaId;
+    captchaAnswer;
+}
+class RegisterPhoneDto {
+    phone;
+    smsCode;
+    password;
+    captchaId;
+    captchaAnswer;
+}
 let AuthController = class AuthController {
     auth;
     constructor(auth) {
         this.auth = auth;
     }
+    getCaptcha(res) {
+        const { id, svg } = this.auth.generateCaptcha();
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('X-Captcha-Id', id);
+        res.send(svg);
+    }
+    async sendSms(dto) {
+        if (dto.captchaId && dto.captchaAnswer) {
+            const valid = this.auth.verifyCaptcha(dto.captchaId, dto.captchaAnswer);
+            if (!valid) {
+                return { success: false, message: '图片验证码错误' };
+            }
+        }
+        return this.auth.sendSmsCode(dto.phone, dto.type ?? 'register');
+    }
     register(dto) {
         return this.auth.register(dto.email, dto.password, dto.name);
+    }
+    registerPhone(dto) {
+        return this.auth.registerByPhone(dto.phone, dto.smsCode, dto.password, dto.captchaId, dto.captchaAnswer);
     }
     login(dto) {
         return this.auth.login(dto.email, dto.password);
@@ -38,12 +69,33 @@ let AuthController = class AuthController {
 };
 exports.AuthController = AuthController;
 __decorate([
+    (0, common_1.Get)('captcha'),
+    __param(0, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "getCaptcha", null);
+__decorate([
+    (0, common_1.Post)('send-sms'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [SendSmsDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "sendSms", null);
+__decorate([
     (0, common_1.Post)('register'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [RegisterDto]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "register", null);
+__decorate([
+    (0, common_1.Post)('register-phone'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [RegisterPhoneDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "registerPhone", null);
 __decorate([
     (0, common_1.Post)('login'),
     __param(0, (0, common_1.Body)()),

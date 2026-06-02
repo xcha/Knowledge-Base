@@ -9,9 +9,9 @@ export declare class KnowledgeController {
     }): Promise<{
         id: string;
         name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
         userId: string;
     }>;
     list(req: AuthRequest): Promise<({
@@ -21,9 +21,9 @@ export declare class KnowledgeController {
     } & {
         id: string;
         name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
         userId: string;
     })[]>;
     deleteKb(id: string, req: AuthRequest): Promise<void>;

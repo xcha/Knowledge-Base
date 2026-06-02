@@ -12,13 +12,45 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  password       String
-  name           String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  knowledgeBases KnowledgeBase[]
+  id                  String          @id @default(cuid())
+  email               String          @unique
+  password            String
+  name                String?
+  phone               String?         @unique
+  phoneVerified       Boolean         @default(false)
+  // 会员等级：free / basic / pro
+  membership          String          @default("free")
+  membershipExpiresAt DateTime?
+  // 不同会员等级的功能配额
+  maxKnowledgeBases   Int             @default(3)
+  maxDocuments        Int             @default(10)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  knowledgeBases      KnowledgeBase[]
+}
+
+model SmsCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  type      String   // register | login | reset_password
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PaymentOrder {
+  id            String   @id @default(cuid())
+  userId        String
+  outTradeNo    String   @unique // 商户订单号，唯一，回调用
+  subject       String   // 商品名称，如 "Pro会员-1个月"
+  totalAmount   String   // 金额，字符串避免浮点精度问题
+  status        String   @default("pending") // pending | paid | closed
+  membership    String   // 购买的会员等级
+  durationMonths Int     // 购买月数
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model KnowledgeBase {
