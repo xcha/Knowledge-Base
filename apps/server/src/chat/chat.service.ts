@@ -60,8 +60,46 @@ export class ChatService {
     });
   }
 
+  async renameSession(sessionId: string, title: string) {
+    return this.prisma.chatSession.update({
+      where: { id: sessionId },
+      data: { title },
+    });
+  }
+
   async deleteSession(sessionId: string) {
     await this.prisma.chatSession.delete({ where: { id: sessionId } });
+  }
+
+  // ---- 消息反馈 ----
+  async feedbackMessage(
+    messageId: string,
+    userId: string,
+    type: 'like' | 'dislike',
+    comment?: string,
+  ) {
+    // 同用户同消息只保留一条反馈（upsert 逻辑）
+    const existing = await this.prisma.messageFeedback.findFirst({
+      where: { messageId, userId },
+    });
+    if (existing) {
+      return this.prisma.messageFeedback.update({
+        where: { id: existing.id },
+        data: { type, comment },
+      });
+    }
+    return this.prisma.messageFeedback.create({
+      data: { messageId, userId, type, comment },
+    });
+  }
+
+  async getMessageFeedback(messageId: string) {
+    const list = await this.prisma.messageFeedback.findMany({
+      where: { messageId },
+    });
+    const likes = list.filter((f) => f.type === 'like').length;
+    const dislikes = list.filter((f) => f.type === 'dislike').length;
+    return { likes, dislikes, total: list.length, list };
   }
 
   // RAG 问答核心流程，通过 SSE 流式返回结果

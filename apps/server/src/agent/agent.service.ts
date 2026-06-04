@@ -59,6 +59,7 @@ export class AgentService {
       this.knowledge,
       this.vector,
       this.prisma,
+      userId,
     );
 
     // 每次请求创建新的 Agent 实例，工具绑定了具体的 knowledgeBaseId
@@ -69,13 +70,15 @@ export class AgentService {
       prompt: `你是一个专业的知识库问答助手。
         你有以下工具可以使用：
         - search_knowledge：在知识库中检索相关内容
-        - get_document_list：查看知识库中有哪些文档
+        - get_document_list：查看知识库中有哪些文档（含ID和标签）
+        - get_document_content：获取指定文档的完整文本内容
 
         回答策略：
         1. 如果问题需要查找具体信息，先调用 search_knowledge
         2. 如果用户询问有哪些文档，调用 get_document_list
-        3. 如果问题是通用知识，可以直接回答
-        4. 基于检索结果给出准确、有依据的回答`,
+        3. 如果用户要求总结/概括/摘要某文档，先 get_document_list 拿到文档ID，再调 get_document_content 获取全文，最后生成摘要
+        4. 如果问题是通用知识，可以直接回答
+        5. 基于检索结果给出准确、有依据的回答`,
     });
 
     // 加载历史消息（如果有 sessionId）

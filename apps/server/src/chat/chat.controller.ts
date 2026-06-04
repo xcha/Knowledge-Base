@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Patch,
   Param,
   Body,
   UseGuards,
@@ -35,6 +36,14 @@ export class ChatController {
     return this.chatService.listSessions(kbId, req.user.id);
   }
 
+  @Patch(':sessionId')
+  renameSession(
+    @Param('sessionId') sessionId: string,
+    @Body() body: { title: string },
+  ) {
+    return this.chatService.renameSession(sessionId, body.title);
+  }
+
   @Delete(':sessionId')
   deleteSession(@Param('sessionId') sessionId: string) {
     return this.chatService.deleteSession(sessionId);
@@ -53,5 +62,20 @@ export class ChatController {
     @Res() res: Response,
   ) {
     await this.chatService.chatStream(sessionId, req.user.id, dto.question, res);
+  }
+
+  // 消息反馈（点赞/踩）
+  @Post(':sessionId/messages/:msgId/feedback')
+  feedback(
+    @Param('msgId') msgId: string,
+    @Request() req: AuthRequest,
+    @Body() body: { type: 'like' | 'dislike'; comment?: string },
+  ) {
+    return this.chatService.feedbackMessage(msgId, req.user.id, body.type, body.comment);
+  }
+
+  @Get(':sessionId/messages/:msgId/feedback')
+  getFeedback(@Param('msgId') msgId: string) {
+    return this.chatService.getMessageFeedback(msgId);
   }
 }

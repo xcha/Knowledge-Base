@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, use } from 'react';
 import Link from 'next/link';
-import { chatApi, type ChatSession, type ChatMessage } from '@/lib/api';
+import { chatApi, type ChatSession, type ChatMessage, type FeedbackData } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
 type Mode = 'rag' | 'agent';
@@ -27,6 +27,9 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
   const [streamingText, setStreamingText] = useState('');
   const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('rag');
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackData>>({});
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +59,22 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
     setSessions((prev) => [res.data, ...prev]);
     setActiveSession(res.data.id);
     setMessages([]);
+  }
+
+  async function handleRenameSession(sessionId: string) {
+    if (!editingSessionTitle.trim()) return;
+    await chatApi.renameSession(kbId, sessionId, editingSessionTitle.trim());
+    setEditingSessionId(null);
+    fetchSessions();
+  }
+
+  async function handleFeedback(msgId: string, type: 'like' | 'dislike') {
+    if (!activeSession) return;
+    try {
+      await chatApi.feedbackMessage(kbId, activeSession, msgId, type);
+      const fb = await chatApi.getFeedback(kbId, activeSession, msgId);
+      setFeedbackMap((prev) => ({ ...prev, [msgId]: fb.data }));
+    } catch { /* ignore */ }
   }
 
   async function deleteSession(sessionId: string) {
@@ -208,7 +227,19 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
                   activeSession === s.id ? 'bg-blue-50 border-r-2 border-blue-600' : ''
                 }`}
               >
-                <span className="text-sm text-gray-700 truncate">{s.title}</span>
+                {editingSessionId === s.id ? (
+                  <input autoFocus value={editingSessionTitle}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setEditingSessionTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSession(s.id); if (e.key === 'Escape') setEditingSessionId(null); }}
+                    onBlur={() => setEditingSessionId(null)}
+                    className="text-sm border border-blue-400 rounded px-1 py-0.5 w-full focus:outline-none" />
+                ) : (
+                  <span className="text-sm text-gray-700 truncate cursor-pointer hover:text-blue-600"
+                    onDoubleClick={(e) => { e.stopPropagation(); setEditingSessionId(s.id); setEditingSessionTitle(s.title); }}>
+                    {s.title}
+                  </span>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -244,15 +275,50 @@ export default function ChatPage({ params }: { params: Promise<{ kbId: string }>
                       }`}
                     >
                       {msg.content}
+                      {msg.role === 'assistant' && (
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+                          <button onClick={() => handleFeedback(msg.id, 'like')}
+                            className={`text-xs px-2 py-0.5 rounded transition ${feedbackMap[msg.id]?.likes ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:text-green-600'}`}>
+                            👍 {feedbackMap[msg.id]?.likes || ''}
+                          </button>
+                          <button onClick={() => handleFeedback(msg.id, 'dislike')}
+                            className={`text-xs px-2 py-0.5 rounded transition ${feedbackMap[msg.id]?.dislikes ? 'text-red-600 bg-red-50' : 'text-gray-400 hover:text-red-600'}`}>
+                            👎 {feedbackMap[msg.id]?.dislikes || ''}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
 
+                {/* 骨架屏思考动画：流式开始但还没收到 token，或正在调工具 */}
+                {streaming && !streamingText && !activeToolCall && (
+                  <div className="flex justify-start">
+                    <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 max-w-[70%] space-y-3 animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="text-xs text-gray-400 ml-1">正在思考</span>
+                      </div>
+                      <div className="h-3 bg-gray-100 rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded w-1/2" />
+                      <div className="h-3 bg-gray-100 rounded w-2/3" />
+                    </div>
+                  </div>
+                )}
+
                 {activeToolCall && (
                   <div className="flex justify-start">
-                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-xs text-amber-700">
-                      <span className="animate-spin">⚙</span>
-                      正在{activeToolCall}...
+                    <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 max-w-[70%] space-y-3 animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="text-xs text-amber-600 ml-1">正在{activeToolCall}</span>
+                      </div>
+                      <div className="h-3 bg-amber-50 rounded w-3/4" />
+                      <div className="h-3 bg-amber-50 rounded w-1/2" />
                     </div>
                   </div>
                 )}

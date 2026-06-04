@@ -30,10 +30,38 @@ export declare class ChatService {
     getSessionMessages(sessionId: string): Promise<{
         id: string;
         createdAt: Date;
-        content: string;
         role: string;
+        content: string;
         sessionId: string;
     }[]>;
+    renameSession(sessionId: string, title: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        knowledgeBaseId: string;
+        title: string | null;
+    }>;
     deleteSession(sessionId: string): Promise<void>;
+    feedbackMessage(messageId: string, userId: string, type: 'like' | 'dislike', comment?: string): Promise<{
+        id: string;
+        type: string;
+        createdAt: Date;
+        userId: string;
+        messageId: string;
+        comment: string | null;
+    }>;
+    getMessageFeedback(messageId: string): Promise<{
+        likes: number;
+        dislikes: number;
+        total: number;
+        list: {
+            id: string;
+            type: string;
+            createdAt: Date;
+            userId: string;
+            messageId: string;
+            comment: string | null;
+        }[];
+    }>;
     chatStream(sessionId: string, userId: string, question: string, res: Response): Promise<void>;
 }

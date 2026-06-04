@@ -24,13 +24,46 @@ export declare class ChatController {
         knowledgeBaseId: string;
         title: string | null;
     })[]>;
+    renameSession(sessionId: string, body: {
+        title: string;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        knowledgeBaseId: string;
+        title: string | null;
+    }>;
     deleteSession(sessionId: string): Promise<void>;
     getMessages(sessionId: string): Promise<{
         id: string;
         createdAt: Date;
-        content: string;
         role: string;
+        content: string;
         sessionId: string;
     }[]>;
     sendMessage(sessionId: string, req: AuthRequest, dto: SendMessageDto, res: Response): Promise<void>;
+    feedback(msgId: string, req: AuthRequest, body: {
+        type: 'like' | 'dislike';
+        comment?: string;
+    }): Promise<{
+        id: string;
+        type: string;
+        createdAt: Date;
+        userId: string;
+        messageId: string;
+        comment: string | null;
+    }>;
+    getFeedback(msgId: string): Promise<{
+        likes: number;
+        dislikes: number;
+        total: number;
+        list: {
+            id: string;
+            type: string;
+            createdAt: Date;
+            userId: string;
+            messageId: string;
+            comment: string | null;
+        }[];
+    }>;
 }

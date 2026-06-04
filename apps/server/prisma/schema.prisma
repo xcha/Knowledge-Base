@@ -18,15 +18,39 @@ model User {
   name                String?
   phone               String?         @unique
   phoneVerified       Boolean         @default(false)
-  // 会员等级：free / basic / pro
   membership          String          @default("free")
   membershipExpiresAt DateTime?
-  // 不同会员等级的功能配额
   maxKnowledgeBases   Int             @default(3)
   maxDocuments        Int             @default(10)
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
   knowledgeBases      KnowledgeBase[]
+  ownedTeams          Team[]          @relation("TeamOwner")
+  teamMembers         TeamMember[]
+}
+
+model Team {
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  ownerId        String
+  owner          User            @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+  knowledgeBases KnowledgeBase[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member") // owner | admin | member
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, userId])
 }
 
 model SmsCode {
@@ -59,6 +83,8 @@ model KnowledgeBase {
   description String?
   userId      String
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
   documents   Document[]
   sessions    ChatSession[]
   createdAt   DateTime      @default(now())
@@ -66,15 +92,27 @@ model KnowledgeBase {
 }
 
 model Document {
-  id              String          @id @default(cuid())
-  filename        String
-  originalName    String
-  mimeType        String
-  size            Int
-  knowledgeBaseId String
-  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
-  chunks          DocumentChunk[]
-  createdAt       DateTime        @default(now())
+  id                String          @id @default(cuid())
+  filename          String
+  originalName      String
+  mimeType          String
+  size              Int
+  tags              String          @default("")  // 逗号分隔的标签
+  version           Int             @default(1)   // 版本号
+  parentDocumentId  String?         // 上一版本文档 ID（链式版本追踪）
+  knowledgeBaseId   String
+  knowledgeBase     KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  chunks            DocumentChunk[]
+  createdAt         DateTime        @default(now())
+}
+
+model MessageFeedback {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  type      String   // like | dislike
+  comment   String?  // 可选反馈文字
+  createdAt DateTime @default(now())
 }
 
 model DocumentChunk {

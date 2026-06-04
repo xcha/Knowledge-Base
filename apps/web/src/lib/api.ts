@@ -81,8 +81,30 @@ export interface KnowledgeBase {
   id: string;
   name: string;
   description?: string;
+  teamId?: string | null;
+  team?: { id: string; name: string } | null;
   createdAt: string;
   _count: { documents: number };
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  description?: string;
+  ownerId: string;
+  _count?: { members: number; knowledgeBases: number };
+  members?: { user: { id: string; email: string; name: string | null }; role: string }[];
+  knowledgeBases?: KnowledgeBase[];
+  createdAt: string;
+}
+
+export interface DocVersion {
+  id: string;
+  originalName: string;
+  version: number;
+  size: number;
+  _count: { chunks: number };
+  createdAt: string;
 }
 
 export interface Document {
@@ -90,8 +112,22 @@ export interface Document {
   originalName: string;
   size: number;
   mimeType: string;
+  tags: string;
+  version: number;
   createdAt: string;
   _count: { chunks: number };
+}
+
+export interface GraphData {
+  nodes: { id: string; name: string; symbolSize: number }[];
+  links: { source: string; target: string; value: number }[];
+}
+
+export interface FeedbackData {
+  likes: number;
+  dislikes: number;
+  total: number;
+  list: unknown[];
 }
 
 export interface ChatSession {
@@ -136,18 +172,51 @@ export const knowledgeApi = {
   create: (name: string, description?: string) =>
     api.post<KnowledgeBase>('/knowledge', { name, description }),
   delete: (id: string) => api.delete(`/knowledge/${id}`),
-  listDocuments: (kbId: string) =>
-    api.get<Document[]>(`/knowledge/${kbId}/documents`),
-  uploadDocument: (kbId: string, file: File) => {
+
+  listDocuments: (kbId: string, tag?: string) =>
+    api.get<Document[]>(`/knowledge/${kbId}/documents${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`),
+
+  uploadDocument: (kbId: string, file: File, tags?: string) => {
     const form = new FormData();
     form.append('file', file);
+    if (tags) form.append('tags', tags);
     return api.post<{ documentId: string; chunkCount: number }>(
       `/knowledge/${kbId}/documents`,
       form,
     );
   },
+
   deleteDocument: (kbId: string, docId: string) =>
     api.delete(`/knowledge/${kbId}/documents/${docId}`),
+
+  getDocumentContent: (kbId: string, docId: string) =>
+    api.get<{ id: string; originalName: string; content: string }>(
+      `/knowledge/${kbId}/documents/${docId}/content`,
+    ),
+
+  getTags: (kbId: string) =>
+    api.get<string[]>(`/knowledge/${kbId}/tags`),
+
+  updateTags: (kbId: string, docId: string, tags: string) =>
+    api.post(`/knowledge/${kbId}/documents/${docId}/tags`, { tags }),
+
+  getVersions: (kbId: string, docId: string) =>
+    api.get<DocVersion[]>(`/knowledge/${kbId}/documents/${docId}/versions`),
+
+  getGraph: (kbId: string) =>
+    api.get<GraphData>(`/knowledge/${kbId}/graph`),
+
+  rename: (id: string, name: string) =>
+    api.patch<KnowledgeBase>(`/knowledge/${id}`, { name }),
+
+  updateKb: (id: string, data: { name?: string; description?: string }) =>
+    api.patch<KnowledgeBase>(`/knowledge/${id}`, data),
+
+  renameDocument: (kbId: string, docId: string, originalName: string) =>
+    api.patch(`/knowledge/${kbId}/documents/${docId}`, { originalName }),
+
+  updateContent: (kbId: string, docId: string, content: string) =>
+    api.patch(`/knowledge/${kbId}/documents/${docId}/content`, { content }),
 };
 
 // --- Chat ---
@@ -156,10 +225,41 @@ export const chatApi = {
     api.get<ChatSession[]>(`/knowledge/${kbId}/sessions`),
   createSession: (kbId: string, title?: string) =>
     api.post<ChatSession>(`/knowledge/${kbId}/sessions`, { title }),
+  renameSession: (kbId: string, sessionId: string, title: string) =>
+    api.patch(`/knowledge/${kbId}/sessions/${sessionId}`, { title }),
+
   deleteSession: (kbId: string, sessionId: string) =>
     api.delete(`/knowledge/${kbId}/sessions/${sessionId}`),
   getMessages: (kbId: string, sessionId: string) =>
     api.get<ChatMessage[]>(`/knowledge/${kbId}/sessions/${sessionId}/messages`),
+
+  feedbackMessage: (kbId: string, sessionId: string, msgId: string, type: 'like' | 'dislike', comment?: string) =>
+    api.post(`/knowledge/${kbId}/sessions/${sessionId}/messages/${msgId}/feedback`, { type, comment }),
+
+  getFeedback: (kbId: string, sessionId: string, msgId: string) =>
+    api.get<FeedbackData>(`/knowledge/${kbId}/sessions/${sessionId}/messages/${msgId}/feedback`),
+};
+
+// --- Teams ---
+export const teamApi = {
+  create: (name: string, description?: string) =>
+    api.post<Team>('/teams', { name, description }),
+
+  listMine: () => api.get<Team[]>('/teams'),
+
+  get: (id: string) => api.get<Team>(`/teams/${id}`),
+
+  invite: (id: string, email: string) =>
+    api.post<{ userId: string; role: string }>(`/teams/${id}/members`, { email }),
+
+  removeMember: (id: string, userId: string) =>
+    api.delete(`/teams/${id}/members/${userId}`),
+
+  shareKb: (teamId: string, kbId: string) =>
+    api.post(`/teams/${teamId}/knowledge-bases/${kbId}`),
+
+  unshareKb: (teamId: string, kbId: string) =>
+    api.delete(`/teams/${teamId}/knowledge-bases/${kbId}`),
 };
 
 // --- User ---

@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { knowledgeApi, type KnowledgeBase } from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { knowledgeApi, type KnowledgeBase } from "@/lib/api";
+import { useAuthStore } from "@/lib/store";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -12,12 +12,24 @@ export default function DashboardPage() {
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newDesc, setNewDesc] = useState('');
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingKb, setEditingKb] = useState<string | null>(null);
+  const [editKbName, setEditKbName] = useState("");
+
+  async function handleRenameKb(id: string) {
+    if (!editKbName.trim()) return;
+    await knowledgeApi.rename(id, editKbName.trim());
+    setEditingKb(null);
+    fetchKbs();
+  }
 
   useEffect(() => {
-    if (!user) { router.push('/login'); return; }
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     fetchKbs();
   }, [user]);
 
@@ -36,8 +48,8 @@ export default function DashboardPage() {
     setCreating(true);
     try {
       await knowledgeApi.create(newName.trim(), newDesc.trim() || undefined);
-      setNewName('');
-      setNewDesc('');
+      setNewName("");
+      setNewDesc("");
       setShowForm(false);
       await fetchKbs();
     } finally {
@@ -46,14 +58,14 @@ export default function DashboardPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('确认删除该知识库？此操作不可恢复。')) return;
+    if (!confirm("确认删除该知识库？此操作不可恢复。")) return;
     await knowledgeApi.delete(id);
     setKbs((prev) => prev.filter((kb) => kb.id !== id));
   }
 
   function handleLogout() {
     logout();
-    router.push('/login');
+    router.push("/login");
   }
 
   return (
@@ -62,8 +74,24 @@ export default function DashboardPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">AI 知识库</h1>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/stats" className="text-sm text-gray-500 hover:text-blue-600 transition">📊 数据看板</Link>
-          <Link href="/dashboard/membership" className="text-sm text-yellow-600 hover:text-yellow-700 transition">💎 会员中心</Link>
+          <Link
+            href="/dashboard/teams"
+            className="text-sm text-gray-500 hover:text-green-600 transition"
+          >
+            👥 团队
+          </Link>
+          <Link
+            href="/dashboard/stats"
+            className="text-sm text-gray-500 hover:text-blue-600 transition"
+          >
+            📊 数据看板
+          </Link>
+          <Link
+            href="/dashboard/membership"
+            className="text-sm text-yellow-600 hover:text-yellow-700 transition"
+          >
+            💎 会员中心
+          </Link>
           <span className="text-sm text-gray-500">{user?.email}</span>
           <button
             onClick={handleLogout}
@@ -110,7 +138,7 @@ export default function DashboardPage() {
                 disabled={creating}
                 className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
               >
-                {creating ? '创建中...' : '创建'}
+                {creating ? "创建中..." : "创建"}
               </button>
               <button
                 type="button"
@@ -136,24 +164,58 @@ export default function DashboardPage() {
             {kbs.map((kb) => (
               <div
                 key={kb.id}
-                className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between hover:border-blue-300 transition"
+                className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between hover:border-blue-300 transition cursor-pointer"
+                onClick={() => router.push(`/dashboard/${kb.id}`)}
               >
-                <Link href={`/dashboard/${kb.id}`} className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{kb.name}</p>
+                <div className="flex-1 min-w-0">
+                  {editingKb === kb.id ? (
+                    <div
+                      className="flex gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        autoFocus
+                        value={editKbName}
+                        onChange={(e) => setEditKbName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleRenameKb(kb.id);
+                          if (e.key === "Escape") setEditingKb(null);
+                        }}
+                        onBlur={() => setEditingKb(null)}
+                        className="border border-blue-400 rounded px-2 py-0.5 text-sm w-full focus:outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-gray-900 truncate">
+                        {kb.name}
+                      </p>
+                      {kb.team && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-600 rounded shrink-0">
+                          👥 {kb.team.name}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {kb.description && (
-                    <p className="text-sm text-gray-500 mt-0.5 truncate">{kb.description}</p>
+                    <p className="text-sm text-gray-500 mt-0.5 truncate">
+                      {kb.description}
+                    </p>
                   )}
                   <p className="text-xs text-gray-400 mt-1">
                     {kb._count.documents} 个文档
                   </p>
-                </Link>
-                <div className="flex items-center gap-2 ml-4">
-                  <Link
-                    href={`/dashboard/${kb.id}/chat`}
+                </div>
+                <div
+                  className="flex items-center gap-2 ml-4 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => router.push(`/dashboard/${kb.id}/chat`)}
                     className="text-sm text-blue-600 hover:underline"
                   >
                     对话
-                  </Link>
+                  </button>
                   <button
                     onClick={() => handleDelete(kb.id)}
                     className="text-sm text-red-400 hover:text-red-600 transition"

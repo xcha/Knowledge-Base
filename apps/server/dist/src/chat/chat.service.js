@@ -66,8 +66,36 @@ let ChatService = ChatService_1 = class ChatService {
             orderBy: { createdAt: 'asc' },
         });
     }
+    async renameSession(sessionId, title) {
+        return this.prisma.chatSession.update({
+            where: { id: sessionId },
+            data: { title },
+        });
+    }
     async deleteSession(sessionId) {
         await this.prisma.chatSession.delete({ where: { id: sessionId } });
+    }
+    async feedbackMessage(messageId, userId, type, comment) {
+        const existing = await this.prisma.messageFeedback.findFirst({
+            where: { messageId, userId },
+        });
+        if (existing) {
+            return this.prisma.messageFeedback.update({
+                where: { id: existing.id },
+                data: { type, comment },
+            });
+        }
+        return this.prisma.messageFeedback.create({
+            data: { messageId, userId, type, comment },
+        });
+    }
+    async getMessageFeedback(messageId) {
+        const list = await this.prisma.messageFeedback.findMany({
+            where: { messageId },
+        });
+        const likes = list.filter((f) => f.type === 'like').length;
+        const dislikes = list.filter((f) => f.type === 'dislike').length;
+        return { likes, dislikes, total: list.length, list };
     }
     async chatStream(sessionId, userId, question, res) {
         const session = await this.prisma.chatSession.findFirst({

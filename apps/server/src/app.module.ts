@@ -10,6 +10,7 @@ import { VectorModule } from './vector/vector.module';
 import { AgentModule } from './agent/agent.module';
 import { PaymentModule } from './payment/payment.module';
 import { UserModule } from './user/user.module';
+import { TeamModule } from './team/team.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UserModule } from './user/user.module';
     AgentModule,
     PaymentModule,
     UserModule,
+    TeamModule,
   ],
   controllers: [AppController],
   providers: [AppService],
