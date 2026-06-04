@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from "@/lib/error";
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { knowledgeApi, type Document } from '@/lib/api';
@@ -34,8 +35,8 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
       const res = await knowledgeApi.uploadDocument(kbId, file);
       setUploadResult(`上传成功，共生成 ${res.data.chunkCount} 个向量块`);
       await fetchDocs();
-    } catch (err: any) {
-      setUploadResult(err.response?.data?.message ?? '上传失败');
+    } catch (err: unknown) {
+      setUploadResult(getErrorMessage(err, '上传失败'));
     } finally {
       setUploading(false);
       e.target.value = '';

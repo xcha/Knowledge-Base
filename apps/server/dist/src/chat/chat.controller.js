@@ -16,14 +16,15 @@ exports.ChatController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const chat_service_1 = require("./chat.service");
-const types_1 = require("../common/types");
+const create_session_dto_1 = require("./dto/create-session.dto");
+const send_message_dto_1 = require("./dto/send-message.dto");
 let ChatController = class ChatController {
     chatService;
     constructor(chatService) {
         this.chatService = chatService;
     }
-    createSession(kbId, req, body) {
-        return this.chatService.createSession(kbId, req.user.id, body.title);
+    createSession(kbId, req, dto) {
+        return this.chatService.createSession(kbId, req.user.id, dto.title);
     }
     listSessions(kbId, req) {
         return this.chatService.listSessions(kbId, req.user.id);
@@ -34,8 +35,8 @@ let ChatController = class ChatController {
     getMessages(sessionId) {
         return this.chatService.getSessionMessages(sessionId);
     }
-    async sendMessage(sessionId, req, body, res) {
-        await this.chatService.chatStream(sessionId, req.user.id, body.question, res);
+    async sendMessage(sessionId, req, dto, res) {
+        await this.chatService.chatStream(sessionId, req.user.id, dto.question, res);
     }
 };
 exports.ChatController = ChatController;
@@ -45,7 +46,7 @@ __decorate([
     __param(1, (0, common_1.Request)()),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest, Object]),
+    __metadata("design:paramtypes", [String, Object, create_session_dto_1.CreateSessionDto]),
     __metadata("design:returntype", void 0)
 ], ChatController.prototype, "createSession", null);
 __decorate([
@@ -53,7 +54,7 @@ __decorate([
     __param(0, (0, common_1.Param)('kbId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ChatController.prototype, "listSessions", null);
 __decorate([
@@ -77,7 +78,7 @@ __decorate([
     __param(2, (0, common_1.Body)()),
     __param(3, (0, common_1.Res)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest, Object, Object]),
+    __metadata("design:paramtypes", [String, Object, send_message_dto_1.SendMessageDto, Object]),
     __metadata("design:returntype", Promise)
 ], ChatController.prototype, "sendMessage", null);
 exports.ChatController = ChatController = __decorate([

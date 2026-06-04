@@ -63,7 +63,9 @@ export class UserService {
     });
 
     // ---- 4. 总量汇总 ----
-    const totalKb = await this.prisma.knowledgeBase.count({ where: { userId } });
+    const totalKb = await this.prisma.knowledgeBase.count({
+      where: { userId },
+    });
     const totalDocs = await this.prisma.document.count({
       where: { knowledgeBase: { userId } },
     });
@@ -77,20 +79,32 @@ export class UserService {
     // ---- 5. 知识库文档分布（饼图数据） ----
     const kbs = await this.prisma.knowledgeBase.findMany({
       where: { userId },
-      select: { name: true, _count: { select: { documents: true, sessions: true } } },
+      select: {
+        name: true,
+        _count: { select: { documents: true, sessions: true } },
+      },
     });
 
     return {
       // 趋势数据（前端 ECharts 折线图）
       trends: {
-        knowledgeBases: aggregateByDay(kbCreated.map(d => d.createdAt), thirtyDaysAgo),
-        documents: aggregateByDay(docsCreated.map(d => d.createdAt), thirtyDaysAgo),
-        messages: aggregateByDay(messagesCreated.map(d => d.createdAt), sevenDaysAgo),
+        knowledgeBases: aggregateByDay(
+          kbCreated.map((d) => d.createdAt),
+          thirtyDaysAgo,
+        ),
+        documents: aggregateByDay(
+          docsCreated.map((d) => d.createdAt),
+          thirtyDaysAgo,
+        ),
+        messages: aggregateByDay(
+          messagesCreated.map((d) => d.createdAt),
+          sevenDaysAgo,
+        ),
       },
       // 汇总卡片数据
       summary: { totalKb, totalDocs, totalSessions, totalMessages },
       // 知识库分布（饼图）
-      kbDistribution: kbs.map(kb => ({
+      kbDistribution: kbs.map((kb) => ({
         name: kb.name,
         documents: kb._count.documents,
         sessions: kb._count.sessions,
@@ -102,7 +116,10 @@ export class UserService {
 /**
  * 把日期数组按天聚合为 ECharts 需要的 [{date, count}] 格式
  */
-function aggregateByDay(dates: Date[], since: Date): { date: string; count: number }[] {
+function aggregateByDay(
+  dates: Date[],
+  since: Date,
+): { date: string; count: number }[] {
   const map = new Map<string, number>();
   const current = new Date(since);
 
@@ -113,7 +130,7 @@ function aggregateByDay(dates: Date[], since: Date): { date: string; count: numb
     current.setDate(current.getDate() + 1);
   }
 
-  dates.forEach(d => {
+  dates.forEach((d) => {
     const key = d.toISOString().slice(0, 10);
     if (map.has(key)) map.set(key, (map.get(key) ?? 0) + 1);
   });

@@ -17,22 +17,22 @@ export declare class AuthService {
     register(email: string, password: string, name?: string): Promise<{
         user: {
             id: string;
-            email: string;
-            name: string | null;
             phone: string | null;
-            membership: string;
             createdAt: Date;
+            name: string | null;
+            email: string;
+            membership: string;
         };
         token: string;
     }>;
     registerByPhone(phone: string, smsCode: string, password: string, captchaId?: string, captchaAnswer?: string): Promise<{
         user: {
             id: string;
-            email: string;
-            name: string | null;
             phone: string | null;
-            membership: string;
             createdAt: Date;
+            name: string | null;
+            email: string;
+            membership: string;
         };
         token: string;
     }>;

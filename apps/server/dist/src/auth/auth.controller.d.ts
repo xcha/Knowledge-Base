@@ -1,27 +1,9 @@
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
-declare class RegisterDto {
-    email: string;
-    password: string;
-    name?: string;
-}
-declare class LoginDto {
-    email: string;
-    password: string;
-}
-declare class SendSmsDto {
-    phone: string;
-    type?: string;
-    captchaId?: string;
-    captchaAnswer?: string;
-}
-declare class RegisterPhoneDto {
-    phone: string;
-    smsCode: string;
-    password: string;
-    captchaId?: string;
-    captchaAnswer?: string;
-}
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { SendSmsDto } from './dto/send-sms.dto';
+import { RegisterPhoneDto } from './dto/register-phone.dto';
 export declare class AuthController {
     private auth;
     constructor(auth: AuthService);
@@ -36,22 +18,22 @@ export declare class AuthController {
     register(dto: RegisterDto): Promise<{
         user: {
             id: string;
-            email: string;
-            name: string | null;
             phone: string | null;
-            membership: string;
             createdAt: Date;
+            name: string | null;
+            email: string;
+            membership: string;
         };
         token: string;
     }>;
     registerPhone(dto: RegisterPhoneDto): Promise<{
         user: {
             id: string;
-            email: string;
-            name: string | null;
             phone: string | null;
-            membership: string;
             createdAt: Date;
+            name: string | null;
+            email: string;
+            membership: string;
         };
         token: string;
     }>;
@@ -67,4 +49,3 @@ export declare class AuthController {
         token: string;
     }>;
 }
-export {};

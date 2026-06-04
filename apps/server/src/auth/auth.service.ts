@@ -13,12 +13,15 @@ import * as svgCaptcha from 'svg-captcha';
 const captchaStore = new Map<string, { text: string; expiresAt: number }>();
 
 // 定时清理过期验证码（每5分钟）
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, val] of captchaStore) {
-    if (val.expiresAt < now) captchaStore.delete(key);
-  }
-}, 5 * 60 * 1000);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, val] of captchaStore) {
+      if (val.expiresAt < now) captchaStore.delete(key);
+    }
+  },
+  5 * 60 * 1000,
+);
 
 @Injectable()
 export class AuthService {
@@ -31,9 +34,9 @@ export class AuthService {
   // 返回 SVG 图片和验证码 ID，前端用 ID 带着答案提交
   generateCaptcha(): { id: string; svg: string } {
     const captcha = svgCaptcha.create({
-      size: 4,          // 4位字符
-      noise: 3,          // 3条干扰线
-      color: true,       // 彩色字符
+      size: 4, // 4位字符
+      noise: 3, // 3条干扰线
+      color: true, // 彩色字符
       background: '#f0f0f0',
       width: 120,
       height: 42,
@@ -61,10 +64,17 @@ export class AuthService {
 
   // ========== 短信验证码 ==========
   // 生成6位随机码，存入 DB，返回验证码（开发阶段直接返回，生产通过短信发送）
-  async sendSmsCode(phone: string, type: string = 'register'): Promise<{ success: boolean; code?: string }> {
+  async sendSmsCode(
+    phone: string,
+    type: string = 'register',
+  ): Promise<{ success: boolean; code?: string }> {
     // 60秒内不允许重复发送
     const recent = await this.prisma.smsCode.findFirst({
-      where: { phone, type, createdAt: { gte: new Date(Date.now() - 60 * 1000) } },
+      where: {
+        phone,
+        type,
+        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+      },
     });
     if (recent) throw new BadRequestException('发送过于频繁，请60秒后再试');
 
@@ -89,7 +99,11 @@ export class AuthService {
   }
 
   // 验证短信验证码
-  async verifySmsCode(phone: string, code: string, type: string): Promise<boolean> {
+  async verifySmsCode(
+    phone: string,
+    code: string,
+    type: string,
+  ): Promise<boolean> {
     const record = await this.prisma.smsCode.findFirst({
       where: { phone, code, type, used: false },
       orderBy: { createdAt: 'desc' },
@@ -99,7 +113,10 @@ export class AuthService {
     if (record.expiresAt < new Date()) return false;
 
     // 标记已使用
-    await this.prisma.smsCode.update({ where: { id: record.id }, data: { used: true } });
+    await this.prisma.smsCode.update({
+      where: { id: record.id },
+      data: { used: true },
+    });
     return true;
   }
 
@@ -111,7 +128,14 @@ export class AuthService {
     const hashed = await bcrypt.hash(password, 10);
     const user = await this.prisma.user.create({
       data: { email, password: hashed, name },
-      select: { id: true, email: true, name: true, phone: true, membership: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        membership: true,
+        createdAt: true,
+      },
     });
 
     return { user, token: this.signToken(user.id, user.email) };
@@ -142,8 +166,20 @@ export class AuthService {
 
     const hashed = await bcrypt.hash(password, 10);
     const user = await this.prisma.user.create({
-      data: { phone, phoneVerified: true, email: `${phone}@phone.user`, password: hashed },
-      select: { id: true, email: true, name: true, phone: true, membership: true, createdAt: true },
+      data: {
+        phone,
+        phoneVerified: true,
+        email: `${phone}@phone.user`,
+        password: hashed,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        membership: true,
+        createdAt: true,
+      },
     });
 
     return { user, token: this.signToken(user.id, user.phone ?? user.email) };

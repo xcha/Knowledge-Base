@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from "@/lib/error";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -22,8 +23,8 @@ export default function LoginPage() {
       const res = await authApi.login(email, password);
       setAuth(res.data.user, res.data.token);
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message ?? '登录失败');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, '登录失败'));
     } finally {
       setLoading(false);
     }

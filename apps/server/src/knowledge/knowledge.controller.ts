@@ -14,10 +14,9 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { KnowledgeService } from './knowledge.service';
-import { AuthRequest } from '../common/types';
+import type { AuthRequest } from '../common/types';
+import { CreateKbDto } from './dto/create-kb.dto';
 
-// 从上传的文件中提取纯文本内容
-// 目前支持 txt/md，PDF 解析后续可扩展
 async function extractText(file: Express.Multer.File): Promise<string> {
   if (
     file.mimetype === 'text/plain' ||
@@ -36,8 +35,8 @@ export class KnowledgeController {
   constructor(private knowledge: KnowledgeService) {}
 
   @Post()
-  create(@Request() req: AuthRequest, @Body() body: { name: string; description?: string }) {
-    return this.knowledge.createKnowledgeBase(req.user.id, body.name, body.description);
+  create(@Request() req: AuthRequest, @Body() dto: CreateKbDto) {
+    return this.knowledge.createKnowledgeBase(req.user.id, dto.name, dto.description);
   }
 
   @Get()
@@ -50,7 +49,6 @@ export class KnowledgeController {
     return this.knowledge.deleteKnowledgeBase(id, req.user.id);
   }
 
-  // 文件上传接口：multer 将文件存入内存 buffer，再交给 service 处理
   @Post(':id/documents')
   @UseInterceptors(FileInterceptor('file', { storage: undefined }))
   async uploadDocument(
@@ -67,7 +65,6 @@ export class KnowledgeController {
     return this.knowledge.listDocuments(knowledgeBaseId, req.user.id);
   }
 
-  // MCP / 外部客户端用的语义检索接口
   @Get(':id/search')
   search(
     @Param('id') knowledgeBaseId: string,

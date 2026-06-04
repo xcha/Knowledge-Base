@@ -91,7 +91,11 @@ let AuthService = class AuthService {
     }
     async sendSmsCode(phone, type = 'register') {
         const recent = await this.prisma.smsCode.findFirst({
-            where: { phone, type, createdAt: { gte: new Date(Date.now() - 60 * 1000) } },
+            where: {
+                phone,
+                type,
+                createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+            },
         });
         if (recent)
             throw new common_1.BadRequestException('发送过于频繁，请60秒后再试');
@@ -116,7 +120,10 @@ let AuthService = class AuthService {
             return false;
         if (record.expiresAt < new Date())
             return false;
-        await this.prisma.smsCode.update({ where: { id: record.id }, data: { used: true } });
+        await this.prisma.smsCode.update({
+            where: { id: record.id },
+            data: { used: true },
+        });
         return true;
     }
     async register(email, password, name) {
@@ -126,7 +133,14 @@ let AuthService = class AuthService {
         const hashed = await bcrypt.hash(password, 10);
         const user = await this.prisma.user.create({
             data: { email, password: hashed, name },
-            select: { id: true, email: true, name: true, phone: true, membership: true, createdAt: true },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                phone: true,
+                membership: true,
+                createdAt: true,
+            },
         });
         return { user, token: this.signToken(user.id, user.email) };
     }
@@ -144,8 +158,20 @@ let AuthService = class AuthService {
             throw new common_1.ConflictException('手机号已被注册');
         const hashed = await bcrypt.hash(password, 10);
         const user = await this.prisma.user.create({
-            data: { phone, phoneVerified: true, email: `${phone}@phone.user`, password: hashed },
-            select: { id: true, email: true, name: true, phone: true, membership: true, createdAt: true },
+            data: {
+                phone,
+                phoneVerified: true,
+                email: `${phone}@phone.user`,
+                password: hashed,
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                phone: true,
+                membership: true,
+                createdAt: true,
+            },
         });
         return { user, token: this.signToken(user.id, user.phone ?? user.email) };
     }

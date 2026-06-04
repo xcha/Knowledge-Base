@@ -1,5 +1,6 @@
 'use client';
 
+import { getErrorMessage } from "@/lib/error";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { paymentApi, userApi, type UserProfile, type PaymentOrder } from '@/lib/api';
@@ -50,8 +51,8 @@ export default function MembershipPage() {
 
       // 刷新用户信息
       loadData();
-    } catch (err: any) {
-      setResult(err.response?.data?.message ?? '支付失败，请重试');
+    } catch (err: unknown) {
+      setResult(getErrorMessage(err, '支付失败，请重试'));
     } finally {
       setPaying(false);
     }

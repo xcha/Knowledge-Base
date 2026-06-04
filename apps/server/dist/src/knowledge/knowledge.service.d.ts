@@ -8,11 +8,11 @@ export declare class KnowledgeService {
     private embedder;
     createKnowledgeBase(userId: string, name: string, description?: string): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
+        name: string;
         updatedAt: Date;
         userId: string;
+        description: string | null;
     }>;
     listKnowledgeBases(userId: string): Promise<({
         _count: {
@@ -20,11 +20,11 @@ export declare class KnowledgeService {
         };
     } & {
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
+        name: string;
         updatedAt: Date;
         userId: string;
+        description: string | null;
     })[]>;
     deleteKnowledgeBase(id: string, userId: string): Promise<void>;
     uploadDocument(knowledgeBaseId: string, userId: string, file: Express.Multer.File, content: string): Promise<{
@@ -38,12 +38,12 @@ export declare class KnowledgeService {
             chunks: number;
         };
     } & {
+        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
-        size: number;
         knowledgeBaseId: string;
     })[]>;
     searchDocuments(knowledgeBaseId: string, userId: string, query: string, topK?: number): Promise<{

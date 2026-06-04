@@ -17,7 +17,7 @@ const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const knowledge_service_1 = require("./knowledge.service");
-const types_1 = require("../common/types");
+const create_kb_dto_1 = require("./dto/create-kb.dto");
 async function extractText(file) {
     if (file.mimetype === 'text/plain' ||
         file.mimetype === 'text/markdown' ||
@@ -32,8 +32,8 @@ let KnowledgeController = class KnowledgeController {
     constructor(knowledge) {
         this.knowledge = knowledge;
     }
-    create(req, body) {
-        return this.knowledge.createKnowledgeBase(req.user.id, body.name, body.description);
+    create(req, dto) {
+        return this.knowledge.createKnowledgeBase(req.user.id, dto.name, dto.description);
     }
     list(req) {
         return this.knowledge.listKnowledgeBases(req.user.id);
@@ -61,14 +61,14 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [types_1.AuthRequest, Object]),
+    __metadata("design:paramtypes", [Object, create_kb_dto_1.CreateKbDto]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [types_1.AuthRequest]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "list", null);
 __decorate([
@@ -76,7 +76,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "deleteKb", null);
 __decorate([
@@ -86,7 +86,7 @@ __decorate([
     __param(1, (0, common_1.Request)()),
     __param(2, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], KnowledgeController.prototype, "uploadDocument", null);
 __decorate([
@@ -94,7 +94,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "listDocuments", null);
 __decorate([
@@ -104,7 +104,7 @@ __decorate([
     __param(2, (0, common_1.Query)('q')),
     __param(3, (0, common_1.Query)('topK')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest, String, String]),
+    __metadata("design:paramtypes", [String, Object, String, String]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "search", null);
 __decorate([
@@ -112,7 +112,7 @@ __decorate([
     __param(0, (0, common_1.Param)('docId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "deleteDocument", null);
 exports.KnowledgeController = KnowledgeController = __decorate([

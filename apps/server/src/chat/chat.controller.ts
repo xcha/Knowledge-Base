@@ -12,7 +12,9 @@ import {
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ChatService } from './chat.service';
-import { AuthRequest } from '../common/types';
+import type { AuthRequest } from '../common/types';
+import { CreateSessionDto } from './dto/create-session.dto';
+import { SendMessageDto } from './dto/send-message.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('knowledge/:kbId/sessions')
@@ -23,9 +25,9 @@ export class ChatController {
   createSession(
     @Param('kbId') kbId: string,
     @Request() req: AuthRequest,
-    @Body() body: { title?: string },
+    @Body() dto: CreateSessionDto,
   ) {
-    return this.chatService.createSession(kbId, req.user.id, body.title);
+    return this.chatService.createSession(kbId, req.user.id, dto.title);
   }
 
   @Get()
@@ -43,16 +45,13 @@ export class ChatController {
     return this.chatService.getSessionMessages(sessionId);
   }
 
-  // SSE 流式问答接口
-  // 注意：@Res() 拿到原生 response 对象后，NestJS 不再自动处理响应，
-  // 必须在 service 里手动调用 res.end()
   @Post(':sessionId/chat')
   async sendMessage(
     @Param('sessionId') sessionId: string,
     @Request() req: AuthRequest,
-    @Body() body: { question: string },
+    @Body() dto: SendMessageDto,
     @Res() res: Response,
   ) {
-    await this.chatService.chatStream(sessionId, req.user.id, body.question, res);
+    await this.chatService.chatStream(sessionId, req.user.id, dto.question, res);
   }
 }
