@@ -6,6 +6,7 @@ export declare class ChatService {
     private prisma;
     private vector;
     private knowledge;
+    private readonly logger;
     constructor(prisma: PrismaService, vector: VectorService, knowledge: KnowledgeService);
     private llm;
     createSession(knowledgeBaseId: string, userId: string, title?: string): Promise<{

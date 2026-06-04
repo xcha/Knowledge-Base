@@ -42,6 +42,7 @@ let KnowledgeController = class KnowledgeController {
         return this.knowledge.deleteKnowledgeBase(id, req.user.id);
     }
     async uploadDocument(knowledgeBaseId, req, file) {
+        file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
         const content = await extractText(file);
         return this.knowledge.uploadDocument(knowledgeBaseId, req.user.id, file, content);
     }

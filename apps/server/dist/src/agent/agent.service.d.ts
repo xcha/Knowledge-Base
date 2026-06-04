@@ -6,6 +6,7 @@ export declare class AgentService {
     private prisma;
     private vector;
     private knowledge;
+    private readonly logger;
     constructor(prisma: PrismaService, vector: VectorService, knowledge: KnowledgeService);
     private llm;
     agentStream(knowledgeBaseId: string, userId: string, question: string, sessionId: string | undefined, res: Response): Promise<void>;

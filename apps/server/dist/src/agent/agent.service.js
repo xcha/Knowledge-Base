@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var AgentService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AgentService = void 0;
 const common_1 = require("@nestjs/common");
@@ -18,10 +19,11 @@ const anthropic_1 = require("@langchain/anthropic");
 const prebuilt_1 = require("@langchain/langgraph/prebuilt");
 const messages_1 = require("@langchain/core/messages");
 const agent_tools_1 = require("./agent.tools");
-let AgentService = class AgentService {
+let AgentService = AgentService_1 = class AgentService {
     prisma;
     vector;
     knowledge;
+    logger = new common_1.Logger(AgentService_1.name);
     constructor(prisma, vector, knowledge) {
         this.prisma = prisma;
         this.vector = vector;
@@ -124,6 +126,7 @@ let AgentService = class AgentService {
             res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
         }
         catch (err) {
+            this.logger.error('Agent error', String(err));
             res.write(`data: ${JSON.stringify({ error: 'Agent 执行失败，请重试' })}\n\n`);
         }
         finally {
@@ -132,7 +135,7 @@ let AgentService = class AgentService {
     }
 };
 exports.AgentService = AgentService;
-exports.AgentService = AgentService = __decorate([
+exports.AgentService = AgentService = AgentService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         vector_service_1.VectorService,

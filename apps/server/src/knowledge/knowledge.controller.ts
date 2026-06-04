@@ -56,6 +56,10 @@ export class KnowledgeController {
     @Request() req: AuthRequest,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    // multer 默认用 latin1 解码文件名，中文会乱码，需重新用 utf8 解码
+    file.originalname = Buffer.from(file.originalname, 'latin1').toString(
+      'utf8',
+    );
     const content = await extractText(file);
     return this.knowledge.uploadDocument(knowledgeBaseId, req.user.id, file, content);
   }

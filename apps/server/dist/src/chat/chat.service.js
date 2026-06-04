@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var ChatService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatService = void 0;
 const common_1 = require("@nestjs/common");
@@ -16,10 +17,11 @@ const vector_service_1 = require("../vector/vector.service");
 const knowledge_service_1 = require("../knowledge/knowledge.service");
 const anthropic_1 = require("@langchain/anthropic");
 const messages_1 = require("@langchain/core/messages");
-let ChatService = class ChatService {
+let ChatService = ChatService_1 = class ChatService {
     prisma;
     vector;
     knowledge;
+    logger = new common_1.Logger(ChatService_1.name);
     constructor(prisma, vector, knowledge) {
         this.prisma = prisma;
         this.vector = vector;
@@ -122,6 +124,7 @@ ${context}`),
             res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
         }
         catch (err) {
+            this.logger.error('RAG chat error', String(err));
             res.write(`data: ${JSON.stringify({ error: '生成失败，请重试' })}\n\n`);
         }
         finally {
@@ -130,7 +133,7 @@ ${context}`),
     }
 };
 exports.ChatService = ChatService;
-exports.ChatService = ChatService = __decorate([
+exports.ChatService = ChatService = ChatService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         vector_service_1.VectorService,

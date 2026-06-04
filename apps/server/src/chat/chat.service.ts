@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
@@ -8,10 +8,11 @@ import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     private prisma: PrismaService,
     private vector: VectorService,
-    // 复用 KnowledgeService 的 embedder，保证查询和存储用同一向量空间
     private knowledge: KnowledgeService,
   ) {}
 
@@ -153,6 +154,7 @@ ${context}`,
       // 发送结束信号
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     } catch (err) {
+      this.logger.error('RAG chat error', String(err));
       res.write(`data: ${JSON.stringify({ error: '生成失败，请重试' })}\n\n`);
     } finally {
       res.end();

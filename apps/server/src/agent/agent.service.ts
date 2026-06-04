@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
@@ -10,6 +10,8 @@ import { buildAgentTools } from './agent.tools';
 
 @Injectable()
 export class AgentService {
+  private readonly logger = new Logger(AgentService.name);
+
   constructor(
     private prisma: PrismaService,
     private vector: VectorService,
@@ -166,6 +168,7 @@ export class AgentService {
 
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     } catch (err) {
+      this.logger.error('Agent error', String(err));
       res.write(
         `data: ${JSON.stringify({ error: 'Agent 执行失败，请重试' })}\n\n`,
       );
