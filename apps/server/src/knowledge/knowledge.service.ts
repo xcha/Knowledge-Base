@@ -23,7 +23,7 @@ export class KnowledgeService {
   });
 
   // 检查用户是否有权访问知识库（所有者或团队成员）
-  private async checkKbAccess(kbId: string, userId: string) {
+  async checkKbAccess(kbId: string, userId: string) {
     const kb = await this.prisma.knowledgeBase.findUnique({
       where: { id: kbId },
       select: { userId: true, teamId: true },
@@ -168,10 +168,7 @@ export class KnowledgeService {
 
   // ---- 文档列表（支持标签筛选）----
   async listDocuments(knowledgeBaseId: string, userId: string, tag?: string) {
-    const kb = await this.prisma.knowledgeBase.findFirst({
-      where: { id: knowledgeBaseId, userId },
-    });
-    if (!kb) throw new NotFoundException('知识库不存在');
+    await this.checkKbAccess(knowledgeBaseId, userId);
 
     const where: any = { knowledgeBaseId };
     // 标签筛选：tags 字段是逗号分隔的字符串，用 contains 模糊匹配
@@ -188,10 +185,7 @@ export class KnowledgeService {
 
   // ---- 获取知识库所有标签 ----
   async getAllTags(knowledgeBaseId: string, userId: string) {
-    const kb = await this.prisma.knowledgeBase.findFirst({
-      where: { id: knowledgeBaseId, userId },
-    });
-    if (!kb) throw new NotFoundException('知识库不存在');
+    await this.checkKbAccess(knowledgeBaseId, userId);
 
     const docs = await this.prisma.document.findMany({
       where: { knowledgeBaseId },
@@ -212,9 +206,11 @@ export class KnowledgeService {
   // ---- 更新文档标签 ----
   async updateDocumentTags(documentId: string, userId: string, tags: string) {
     const doc = await this.prisma.document.findFirst({
-      where: { id: documentId, knowledgeBase: { userId } },
+      where: { id: documentId },
+      include: { knowledgeBase: true },
     });
     if (!doc) throw new NotFoundException('文档不存在');
+    await this.checkKbAccess(doc.knowledgeBaseId, userId);
     return this.prisma.document.update({
       where: { id: documentId },
       data: { tags },
@@ -228,6 +224,9 @@ export class KnowledgeService {
     query: string,
     topK = 5,
   ) {
+    
+    await this.checkKbAccess(knowledgeBaseId, userId);
+
     const kb = await this.prisma.knowledgeBase.findFirst({
       where: { id: knowledgeBaseId, userId },
     });
@@ -322,10 +321,11 @@ export class KnowledgeService {
   // ---- 获取文档完整内容（给摘要工具用） ----
   async getDocumentContent(documentId: string, userId: string) {
     const doc = await this.prisma.document.findFirst({
-      where: { id: documentId, knowledgeBase: { userId } },
-      include: { chunks: { orderBy: { chunkIndex: 'asc' } } },
+      where: { id: documentId },
+      include: { chunks: { orderBy: { chunkIndex: 'asc' } }, knowledgeBase: true },
     });
     if (!doc) throw new NotFoundException('文档不存在');
+    await this.checkKbAccess(doc.knowledgeBaseId, userId);
 
     return {
       id: doc.id,
@@ -339,9 +339,11 @@ export class KnowledgeService {
   // ---- 文档版本历史 ----
   async getDocumentVersions(documentId: string, userId: string) {
     const doc = await this.prisma.document.findFirst({
-      where: { id: documentId, knowledgeBase: { userId } },
+      where: { id: documentId },
+      include: { knowledgeBase: true },
     });
     if (!doc) throw new NotFoundException('文档不存在');
+    await this.checkKbAccess(doc.knowledgeBaseId, userId);
 
     // 沿着 parentDocumentId 链找到根文档，然后查所有版本
     const rootId = doc.parentDocumentId ?? doc.id;
@@ -361,9 +363,13 @@ export class KnowledgeService {
 
   // ---- 知识图谱（标签共现关系）----
   async getKnowledgeGraph(knowledgeBaseId: string, userId: string) {
+    
+    await this.checkKbAccess(knowledgeBaseId, userId);
+
     const kb = await this.prisma.knowledgeBase.findFirst({
       where: { id: knowledgeBaseId, userId },
     });
+    await this.checkKbAccess(knowledgeBaseId, userId);
     if (!kb) throw new NotFoundException('知识库不存在');
 
     const docs = await this.prisma.document.findMany({

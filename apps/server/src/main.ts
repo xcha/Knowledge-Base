@@ -5,8 +5,11 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 允许前端 Next.js dev server 跨域访问
-  app.enableCors({ origin: 'http://localhost:3000', credentials: true });
+  // CORS：支持通过环境变量配置，多个源用逗号分隔
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
+    : ['http://localhost:3000', 'http://localhost:5000'];
+  app.enableCors({ origin: corsOrigins, credentials: true });
 
   // 全局校验管道：自动验证 @Body() DTO 的字段
   app.useGlobalPipes(

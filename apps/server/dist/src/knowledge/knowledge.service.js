@@ -151,11 +151,7 @@ let KnowledgeService = class KnowledgeService {
         return this.embedder.embedQuery(text);
     }
     async listDocuments(knowledgeBaseId, userId, tag) {
-        const kb = await this.prisma.knowledgeBase.findFirst({
-            where: { id: knowledgeBaseId, userId },
-        });
-        if (!kb)
-            throw new common_1.NotFoundException('知识库不存在');
+        await this.checkKbAccess(knowledgeBaseId, userId);
         const where = { knowledgeBaseId };
         if (tag) {
             where.tags = { contains: tag };
@@ -167,11 +163,7 @@ let KnowledgeService = class KnowledgeService {
         });
     }
     async getAllTags(knowledgeBaseId, userId) {
-        const kb = await this.prisma.knowledgeBase.findFirst({
-            where: { id: knowledgeBaseId, userId },
-        });
-        if (!kb)
-            throw new common_1.NotFoundException('知识库不存在');
+        await this.checkKbAccess(knowledgeBaseId, userId);
         const docs = await this.prisma.document.findMany({
             where: { knowledgeBaseId },
             select: { tags: true },
@@ -188,16 +180,19 @@ let KnowledgeService = class KnowledgeService {
     }
     async updateDocumentTags(documentId, userId, tags) {
         const doc = await this.prisma.document.findFirst({
-            where: { id: documentId, knowledgeBase: { userId } },
+            where: { id: documentId },
+            include: { knowledgeBase: true },
         });
         if (!doc)
             throw new common_1.NotFoundException('文档不存在');
+        await this.checkKbAccess(doc.knowledgeBaseId, userId);
         return this.prisma.document.update({
             where: { id: documentId },
             data: { tags },
         });
     }
     async hybridSearch(knowledgeBaseId, userId, query, topK = 5) {
+        await this.checkKbAccess(knowledgeBaseId, userId);
         const kb = await this.prisma.knowledgeBase.findFirst({
             where: { id: knowledgeBaseId, userId },
         });
@@ -270,11 +265,12 @@ let KnowledgeService = class KnowledgeService {
     }
     async getDocumentContent(documentId, userId) {
         const doc = await this.prisma.document.findFirst({
-            where: { id: documentId, knowledgeBase: { userId } },
-            include: { chunks: { orderBy: { chunkIndex: 'asc' } } },
+            where: { id: documentId },
+            include: { chunks: { orderBy: { chunkIndex: 'asc' } }, knowledgeBase: true },
         });
         if (!doc)
             throw new common_1.NotFoundException('文档不存在');
+        await this.checkKbAccess(doc.knowledgeBaseId, userId);
         return {
             id: doc.id,
             originalName: doc.originalName,
@@ -285,10 +281,12 @@ let KnowledgeService = class KnowledgeService {
     }
     async getDocumentVersions(documentId, userId) {
         const doc = await this.prisma.document.findFirst({
-            where: { id: documentId, knowledgeBase: { userId } },
+            where: { id: documentId },
+            include: { knowledgeBase: true },
         });
         if (!doc)
             throw new common_1.NotFoundException('文档不存在');
+        await this.checkKbAccess(doc.knowledgeBaseId, userId);
         const rootId = doc.parentDocumentId ?? doc.id;
         return this.prisma.document.findMany({
             where: {
@@ -304,9 +302,11 @@ let KnowledgeService = class KnowledgeService {
         });
     }
     async getKnowledgeGraph(knowledgeBaseId, userId) {
+        await this.checkKbAccess(knowledgeBaseId, userId);
         const kb = await this.prisma.knowledgeBase.findFirst({
             where: { id: knowledgeBaseId, userId },
         });
+        await this.checkKbAccess(knowledgeBaseId, userId);
         if (!kb)
             throw new common_1.NotFoundException('知识库不存在');
         const docs = await this.prisma.document.findMany({

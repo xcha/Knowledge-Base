@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 // 会员价格配置（单位：元）
@@ -70,11 +70,12 @@ export class PaymentService {
    * 支付成功回调：更新订单状态 + 延长会员
    * 如果是沙箱模拟支付，前端可直接调此接口
    */
-  async handlePaymentSuccess(outTradeNo: string) {
+  async handlePaymentSuccess(outTradeNo: string, userId: string) {
     const order = await this.prisma.paymentOrder.findUnique({
       where: { outTradeNo },
     });
     if (!order) throw new BadRequestException('订单不存在');
+    if (order.userId !== userId) throw new ForbiddenException('无权操作此订单');
     if (order.status === 'paid') return { success: true, message: '订单已支付' };
 
     // 1. 更新订单状态

@@ -24,7 +24,7 @@ export declare class ChatController {
         knowledgeBaseId: string;
         title: string | null;
     })[]>;
-    renameSession(sessionId: string, body: {
+    renameSession(kbId: string, sessionId: string, req: AuthRequest, body: {
         title: string;
     }): Promise<{
         id: string;
@@ -33,8 +33,8 @@ export declare class ChatController {
         knowledgeBaseId: string;
         title: string | null;
     }>;
-    deleteSession(sessionId: string): Promise<void>;
-    getMessages(sessionId: string): Promise<{
+    deleteSession(kbId: string, sessionId: string, req: AuthRequest): Promise<void>;
+    getMessages(kbId: string, sessionId: string, req: AuthRequest): Promise<{
         id: string;
         createdAt: Date;
         role: string;

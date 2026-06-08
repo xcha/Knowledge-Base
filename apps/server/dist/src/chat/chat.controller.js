@@ -29,14 +29,14 @@ let ChatController = class ChatController {
     listSessions(kbId, req) {
         return this.chatService.listSessions(kbId, req.user.id);
     }
-    renameSession(sessionId, body) {
-        return this.chatService.renameSession(sessionId, body.title);
+    renameSession(kbId, sessionId, req, body) {
+        return this.chatService.renameSession(sessionId, req.user.id, kbId, body.title);
     }
-    deleteSession(sessionId) {
-        return this.chatService.deleteSession(sessionId);
+    deleteSession(kbId, sessionId, req) {
+        return this.chatService.deleteSession(sessionId, req.user.id, kbId);
     }
-    getMessages(sessionId) {
-        return this.chatService.getSessionMessages(sessionId);
+    getMessages(kbId, sessionId, req) {
+        return this.chatService.getSessionMessages(sessionId, req.user.id, kbId);
     }
     async sendMessage(sessionId, req, dto, res) {
         await this.chatService.chatStream(sessionId, req.user.id, dto.question, res);
@@ -68,24 +68,30 @@ __decorate([
 ], ChatController.prototype, "listSessions", null);
 __decorate([
     (0, common_1.Patch)(':sessionId'),
-    __param(0, (0, common_1.Param)('sessionId')),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_1.Param)('kbId')),
+    __param(1, (0, common_1.Param)('sessionId')),
+    __param(2, (0, common_1.Request)()),
+    __param(3, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], ChatController.prototype, "renameSession", null);
 __decorate([
     (0, common_1.Delete)(':sessionId'),
-    __param(0, (0, common_1.Param)('sessionId')),
+    __param(0, (0, common_1.Param)('kbId')),
+    __param(1, (0, common_1.Param)('sessionId')),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", void 0)
 ], ChatController.prototype, "deleteSession", null);
 __decorate([
     (0, common_1.Get)(':sessionId/messages'),
-    __param(0, (0, common_1.Param)('sessionId')),
+    __param(0, (0, common_1.Param)('kbId')),
+    __param(1, (0, common_1.Param)('sessionId')),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", void 0)
 ], ChatController.prototype, "getMessages", null);
 __decorate([

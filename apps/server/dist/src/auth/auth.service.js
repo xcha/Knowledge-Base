@@ -48,6 +48,7 @@ const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../prisma/prisma.service");
 const bcrypt = __importStar(require("bcryptjs"));
 const svgCaptcha = __importStar(require("svg-captcha"));
+const crypto_1 = require("crypto");
 const captchaStore = new Map();
 setInterval(() => {
     const now = Date.now();
@@ -99,7 +100,7 @@ let AuthService = class AuthService {
         });
         if (recent)
             throw new common_1.BadRequestException('发送过于频繁，请60秒后再试');
-        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const code = String((0, crypto_1.randomInt)(100000, 1000000));
         await this.prisma.smsCode.create({
             data: {
                 phone,
@@ -109,7 +110,7 @@ let AuthService = class AuthService {
             },
         });
         console.log(`[SMS] 手机号 ${phone} 验证码: ${code}`);
-        return { success: true, code };
+        return { success: true };
     }
     async verifySmsCode(phone, code, type) {
         const record = await this.prisma.smsCode.findFirst({

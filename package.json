@@ -6,6 +6,9 @@
     "dev:server": "pnpm --filter server start:dev",
     "dev:web": "pnpm --filter web dev",
     "dev:mcp": "pnpm --filter mcp dev",
-    "dev": "pnpm --filter server start:dev & pnpm --filter web dev "
+    "dev": "concurrently --names server,web --prefix-colors blue,green \"pnpm --filter server start:dev\" \"pnpm --filter web dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
   }
 }

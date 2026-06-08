@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import Link from 'next/link';
 import { knowledgeApi, type GraphData } from '@/lib/api';
 import ReactECharts from 'echarts-for-react';
+import { PageHeader } from '@/components/PageHeader';
+import { Loading } from '@/components/Loading';
+import { Card, CardContent } from '@/components/ui/card';
+import { Network } from 'lucide-react';
 
 export default function GraphPage({ params }: { params: Promise<{ kbId: string }> }) {
   const { kbId } = use(params);
@@ -14,17 +17,21 @@ export default function GraphPage({ params }: { params: Promise<{ kbId: string }
   }, [kbId]);
 
   if (!data) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">加载中...</div>;
+    return (
+      <div className="min-h-screen bg-muted/30">
+        <PageHeader title="知识图谱" backHref={`/dashboard/${kbId}`} backLabel="返回" />
+        <Loading />
+      </div>
+    );
   }
 
   if (!data.nodes.length) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <Link href={`/dashboard/${kbId}`} className="text-sm text-gray-500 hover:text-gray-900">← 返回</Link>
-        </header>
-        <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
-          还没有足够的文档和标签数据来生成知识图谱
+      <div className="min-h-screen bg-muted/30">
+        <PageHeader title="知识图谱" backHref={`/dashboard/${kbId}`} backLabel="返回" />
+        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+          <Network className="size-12 mb-3 opacity-50" />
+          <p className="text-sm">还没有足够的文档和标签数据来生成知识图谱</p>
         </div>
       </div>
     );
@@ -47,15 +54,14 @@ export default function GraphPage({ params }: { params: Promise<{ kbId: string }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
-        <Link href={`/dashboard/${kbId}`} className="text-sm text-gray-500 hover:text-gray-900">← 返回</Link>
-        <h1 className="text-lg font-semibold">知识图谱</h1>
-      </header>
+    <div className="min-h-screen bg-muted/30">
+      <PageHeader title="知识图谱" backHref={`/dashboard/${kbId}`} backLabel="返回" />
       <main className="max-w-5xl mx-auto px-6 py-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <ReactECharts option={option} style={{ height: 580 }} />
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <ReactECharts option={option} style={{ height: 580 }} />
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

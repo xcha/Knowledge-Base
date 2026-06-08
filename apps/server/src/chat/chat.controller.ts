@@ -38,20 +38,30 @@ export class ChatController {
 
   @Patch(':sessionId')
   renameSession(
+    @Param('kbId') kbId: string,
     @Param('sessionId') sessionId: string,
+    @Request() req: AuthRequest,
     @Body() body: { title: string },
   ) {
-    return this.chatService.renameSession(sessionId, body.title);
+    return this.chatService.renameSession(sessionId, req.user.id, kbId, body.title);
   }
 
   @Delete(':sessionId')
-  deleteSession(@Param('sessionId') sessionId: string) {
-    return this.chatService.deleteSession(sessionId);
+  deleteSession(
+    @Param('kbId') kbId: string,
+    @Param('sessionId') sessionId: string,
+    @Request() req: AuthRequest,
+  ) {
+    return this.chatService.deleteSession(sessionId, req.user.id, kbId);
   }
 
   @Get(':sessionId/messages')
-  getMessages(@Param('sessionId') sessionId: string) {
-    return this.chatService.getSessionMessages(sessionId);
+  getMessages(
+    @Param('kbId') kbId: string,
+    @Param('sessionId') sessionId: string,
+    @Request() req: AuthRequest,
+  ) {
+    return this.chatService.getSessionMessages(sessionId, req.user.id, kbId);
   }
 
   @Post(':sessionId/chat')

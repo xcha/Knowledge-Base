@@ -6,7 +6,10 @@ export declare class KnowledgeService {
     constructor(prisma: PrismaService, vector: VectorService);
     private splitter;
     private embedder;
-    private checkKbAccess;
+    checkKbAccess(kbId: string, userId: string): Promise<{
+        userId: string;
+        teamId: string | null;
+    }>;
     createKnowledgeBase(userId: string, name: string, description?: string): Promise<{
         id: string;
         createdAt: Date;

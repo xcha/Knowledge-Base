@@ -3,12 +3,13 @@ import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
-import { ChatAnthropic } from '@langchain/anthropic';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
+import { createClaudeLlm, setupSseHeaders, sendSse } from '../common/llm.provider';
 
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
+  private readonly llm = createClaudeLlm();
 
   constructor(
     private prisma: PrismaService,
@@ -16,24 +17,8 @@ export class ChatService {
     private knowledge: KnowledgeService,
   ) {}
 
-  private llm = new ChatAnthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-sonnet-4-6',
-    clientOptions: {
-      baseURL: process.env.ANTHROPIC_BASE_URL,
-      defaultHeaders: {
-        Authorization: `Bearer ${process.env.ANTHROPIC_API_KEY}`,
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0',
-      },
-    },
-  });
-
   async createSession(knowledgeBaseId: string, userId: string, title?: string) {
-    const kb = await this.prisma.knowledgeBase.findFirst({
-      where: { id: knowledgeBaseId, userId },
-    });
-    if (!kb) throw new NotFoundException('知识库不存在');
+    await this.knowledge.checkKbAccess(knowledgeBaseId, userId);
 
     return this.prisma.chatSession.create({
       data: { knowledgeBaseId, title: title ?? '新对话' },
@@ -41,10 +26,7 @@ export class ChatService {
   }
 
   async listSessions(knowledgeBaseId: string, userId: string) {
-    const kb = await this.prisma.knowledgeBase.findFirst({
-      where: { id: knowledgeBaseId, userId },
-    });
-    if (!kb) throw new NotFoundException('知识库不存在');
+    await this.knowledge.checkKbAccess(knowledgeBaseId, userId);
 
     return this.prisma.chatSession.findMany({
       where: { knowledgeBaseId },
@@ -53,21 +35,24 @@ export class ChatService {
     });
   }
 
-  async getSessionMessages(sessionId: string) {
+  async getSessionMessages(sessionId: string, userId: string, kbId: string) {
+    await this.knowledge.checkKbAccess(kbId, userId);
     return this.prisma.chatMessage.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'asc' },
     });
   }
 
-  async renameSession(sessionId: string, title: string) {
+  async renameSession(sessionId: string, userId: string, kbId: string, title: string) {
+    await this.knowledge.checkKbAccess(kbId, userId);
     return this.prisma.chatSession.update({
       where: { id: sessionId },
       data: { title },
     });
   }
 
-  async deleteSession(sessionId: string) {
+  async deleteSession(sessionId: string, userId: string, kbId: string) {
+    await this.knowledge.checkKbAccess(kbId, userId);
     await this.prisma.chatSession.delete({ where: { id: sessionId } });
   }
 
@@ -110,10 +95,12 @@ export class ChatService {
     res: Response,
   ) {
     const session = await this.prisma.chatSession.findFirst({
-      where: { id: sessionId, knowledgeBase: { userId } },
+      where: { id: sessionId },
       include: { knowledgeBase: true },
     });
     if (!session) throw new NotFoundException('会话不存在');
+    // 验证用户对 KB 的访问权（团队共享兼容）
+    await this.knowledge.checkKbAccess(session.knowledgeBaseId, userId);
 
     // 1. 从数据库加载历史消息，构建 Memory 上下文
     const history = await this.prisma.chatMessage.findMany({
@@ -160,10 +147,7 @@ ${context}`,
     });
 
     // 6. 设置 SSE 响应头
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
+    setupSseHeaders(res);
 
     // 7. 流式调用 Claude，逐 token 推送给前端
     let fullContent = '';
@@ -173,8 +157,7 @@ ${context}`,
         const text = chunk.content as string;
         if (text) {
           fullContent += text;
-          // SSE 格式：data: <内容>\n\n
-          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+          sendSse(res, { text });
         }
       }
 
@@ -189,11 +172,10 @@ ${context}`,
         data: { updatedAt: new Date() },
       });
 
-      // 发送结束信号
-      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      sendSse(res, { done: true });
     } catch (err) {
       this.logger.error('RAG chat error', String(err));
-      res.write(`data: ${JSON.stringify({ error: '生成失败，请重试' })}\n\n`);
+      sendSse(res, { error: '生成失败，请重试' });
     } finally {
       res.end();
     }

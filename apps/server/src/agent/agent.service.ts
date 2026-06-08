@@ -1,35 +1,23 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
-import { ChatAnthropic } from '@langchain/anthropic';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 import { buildAgentTools } from './agent.tools';
+import { createClaudeLlm, setupSseHeaders, sendSse } from '../common/llm.provider';
 
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
+  private readonly llm = createClaudeLlm();
 
   constructor(
     private prisma: PrismaService,
     private vector: VectorService,
     private knowledge: KnowledgeService,
   ) {}
-
-  private llm = new ChatAnthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-sonnet-4-6',
-    clientOptions: {
-      baseURL: process.env.ANTHROPIC_BASE_URL,
-      defaultHeaders: {
-        Authorization: `Bearer ${process.env.ANTHROPIC_API_KEY}`,
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0',
-      },
-    },
-  });
 
   /**
    * Agent 流式问答核心流程：
@@ -48,10 +36,7 @@ export class AgentService {
     sessionId: string | undefined,
     res: Response,
   ) {
-    const kb = await this.prisma.knowledgeBase.findFirst({
-      where: { id: knowledgeBaseId, userId },
-    });
-    if (!kb) throw new NotFoundException('知识库不存在');
+    await this.knowledge.checkKbAccess(knowledgeBaseId, userId);
 
     // 构建工具集，注入当前知识库 ID
     const tools = buildAgentTools(
@@ -107,17 +92,11 @@ export class AgentService {
     }
 
     // 设置 SSE 响应头
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
+    setupSseHeaders(res);
 
     let fullContent = '';
 
     try {
-      // streamEvents 可以监听 Agent 内部每一步的事件：
-      // - on_chat_model_stream：LLM 生成 token
-      // - on_tool_start / on_tool_end：工具调用开始/结束
       const eventStream = agent.streamEvents({ messages }, { version: 'v2' });
 
       for await (const event of eventStream) {
@@ -126,7 +105,6 @@ export class AgentService {
           event.data?.chunk?.content
         ) {
           const raw = event.data.chunk.content;
-          // Claude returns content as [{type:'text', text:'...'}] blocks, not a plain string
           let text = '';
           if (typeof raw === 'string') {
             text = raw;
@@ -138,23 +116,16 @@ export class AgentService {
           }
           if (text) {
             fullContent += text;
-            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            sendSse(res, { text });
           }
         }
 
-        // 工具调用时通知前端，让用户看到 Agent 正在"思考"
         if (event.event === 'on_tool_start') {
-          res.write(
-            `data: ${JSON.stringify({
-              toolCall: { name: event.name, input: event.data?.input },
-            })}\n\n`,
-          );
+          sendSse(res, { toolCall: { name: event.name, input: event.data?.input } });
         }
 
         if (event.event === 'on_tool_end') {
-          res.write(
-            `data: ${JSON.stringify({ toolResult: { name: event.name } })}\n\n`,
-          );
+          sendSse(res, { toolResult: { name: event.name } });
         }
       }
 
@@ -169,12 +140,10 @@ export class AgentService {
         });
       }
 
-      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      sendSse(res, { done: true });
     } catch (err) {
       this.logger.error('Agent error', String(err));
-      res.write(
-        `data: ${JSON.stringify({ error: 'Agent 执行失败，请重试' })}\n\n`,
-      );
+      sendSse(res, { error: 'Agent 执行失败，请重试' });
     } finally {
       res.end();
     }

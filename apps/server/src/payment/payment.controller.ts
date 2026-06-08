@@ -6,6 +6,8 @@ import {
   Body,
   UseGuards,
   Request,
+  Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PaymentService } from './payment.service';
@@ -36,8 +38,12 @@ export class PaymentController {
   }
 
   @Post('callback/:outTradeNo')
-  handleCallback(@Param('outTradeNo') outTradeNo: string) {
-    return this.payment.handlePaymentSuccess(outTradeNo);
+  handleCallback(
+    @Param('outTradeNo') outTradeNo: string,
+    @Request() req: AuthRequest,
+  ) {
+    // 只允许订单所属用户触发回调（防止任意人伪造支付）
+    return this.payment.handlePaymentSuccess(outTradeNo, req.user.id);
   }
 
   @Get('orders')

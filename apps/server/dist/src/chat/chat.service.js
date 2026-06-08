@@ -15,64 +15,49 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const vector_service_1 = require("../vector/vector.service");
 const knowledge_service_1 = require("../knowledge/knowledge.service");
-const anthropic_1 = require("@langchain/anthropic");
 const messages_1 = require("@langchain/core/messages");
+const llm_provider_1 = require("../common/llm.provider");
 let ChatService = ChatService_1 = class ChatService {
     prisma;
     vector;
     knowledge;
     logger = new common_1.Logger(ChatService_1.name);
+    llm = (0, llm_provider_1.createClaudeLlm)();
     constructor(prisma, vector, knowledge) {
         this.prisma = prisma;
         this.vector = vector;
         this.knowledge = knowledge;
     }
-    llm = new anthropic_1.ChatAnthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
-        model: 'claude-sonnet-4-6',
-        clientOptions: {
-            baseURL: process.env.ANTHROPIC_BASE_URL,
-            defaultHeaders: {
-                Authorization: `Bearer ${process.env.ANTHROPIC_API_KEY}`,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0',
-            },
-        },
-    });
     async createSession(knowledgeBaseId, userId, title) {
-        const kb = await this.prisma.knowledgeBase.findFirst({
-            where: { id: knowledgeBaseId, userId },
-        });
-        if (!kb)
-            throw new common_1.NotFoundException('知识库不存在');
+        await this.knowledge.checkKbAccess(knowledgeBaseId, userId);
         return this.prisma.chatSession.create({
             data: { knowledgeBaseId, title: title ?? '新对话' },
         });
     }
     async listSessions(knowledgeBaseId, userId) {
-        const kb = await this.prisma.knowledgeBase.findFirst({
-            where: { id: knowledgeBaseId, userId },
-        });
-        if (!kb)
-            throw new common_1.NotFoundException('知识库不存在');
+        await this.knowledge.checkKbAccess(knowledgeBaseId, userId);
         return this.prisma.chatSession.findMany({
             where: { knowledgeBaseId },
             include: { _count: { select: { messages: true } } },
             orderBy: { updatedAt: 'desc' },
         });
     }
-    async getSessionMessages(sessionId) {
+    async getSessionMessages(sessionId, userId, kbId) {
+        await this.knowledge.checkKbAccess(kbId, userId);
         return this.prisma.chatMessage.findMany({
             where: { sessionId },
             orderBy: { createdAt: 'asc' },
         });
     }
-    async renameSession(sessionId, title) {
+    async renameSession(sessionId, userId, kbId, title) {
+        await this.knowledge.checkKbAccess(kbId, userId);
         return this.prisma.chatSession.update({
             where: { id: sessionId },
             data: { title },
         });
     }
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId, userId, kbId) {
+        await this.knowledge.checkKbAccess(kbId, userId);
         await this.prisma.chatSession.delete({ where: { id: sessionId } });
     }
     async feedbackMessage(messageId, userId, type, comment) {
@@ -99,11 +84,12 @@ let ChatService = ChatService_1 = class ChatService {
     }
     async chatStream(sessionId, userId, question, res) {
         const session = await this.prisma.chatSession.findFirst({
-            where: { id: sessionId, knowledgeBase: { userId } },
+            where: { id: sessionId },
             include: { knowledgeBase: true },
         });
         if (!session)
             throw new common_1.NotFoundException('会话不存在');
+        await this.knowledge.checkKbAccess(session.knowledgeBaseId, userId);
         const history = await this.prisma.chatMessage.findMany({
             where: { sessionId },
             orderBy: { createdAt: 'asc' },
@@ -128,10 +114,7 @@ ${context}`),
         await this.prisma.chatMessage.create({
             data: { role: 'user', content: question, sessionId },
         });
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-        res.flushHeaders();
+        (0, llm_provider_1.setupSseHeaders)(res);
         let fullContent = '';
         try {
             const stream = await this.llm.stream(messages);
@@ -139,7 +122,7 @@ ${context}`),
                 const text = chunk.content;
                 if (text) {
                     fullContent += text;
-                    res.write(`data: ${JSON.stringify({ text })}\n\n`);
+                    (0, llm_provider_1.sendSse)(res, { text });
                 }
             }
             await this.prisma.chatMessage.create({
@@ -149,11 +132,11 @@ ${context}`),
                 where: { id: sessionId },
                 data: { updatedAt: new Date() },
             });
-            res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+            (0, llm_provider_1.sendSse)(res, { done: true });
         }
         catch (err) {
             this.logger.error('RAG chat error', String(err));
-            res.write(`data: ${JSON.stringify({ error: '生成失败，请重试' })}\n\n`);
+            (0, llm_provider_1.sendSse)(res, { error: '生成失败，请重试' });
         }
         finally {
             res.end();

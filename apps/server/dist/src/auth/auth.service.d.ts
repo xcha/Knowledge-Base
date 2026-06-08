@@ -11,7 +11,6 @@ export declare class AuthService {
     verifyCaptcha(id: string, answer: string): boolean;
     sendSmsCode(phone: string, type?: string): Promise<{
         success: boolean;
-        code?: string;
     }>;
     verifySmsCode(phone: string, code: string, type: string): Promise<boolean>;
     register(email: string, password: string, name?: string): Promise<{

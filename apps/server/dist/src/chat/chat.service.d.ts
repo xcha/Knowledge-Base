@@ -7,8 +7,8 @@ export declare class ChatService {
     private vector;
     private knowledge;
     private readonly logger;
+    private readonly llm;
     constructor(prisma: PrismaService, vector: VectorService, knowledge: KnowledgeService);
-    private llm;
     createSession(knowledgeBaseId: string, userId: string, title?: string): Promise<{
         id: string;
         createdAt: Date;
@@ -27,21 +27,21 @@ export declare class ChatService {
         knowledgeBaseId: string;
         title: string | null;
     })[]>;
-    getSessionMessages(sessionId: string): Promise<{
+    getSessionMessages(sessionId: string, userId: string, kbId: string): Promise<{
         id: string;
         createdAt: Date;
         role: string;
         content: string;
         sessionId: string;
     }[]>;
-    renameSession(sessionId: string, title: string): Promise<{
+    renameSession(sessionId: string, userId: string, kbId: string, title: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         knowledgeBaseId: string;
         title: string | null;
     }>;
-    deleteSession(sessionId: string): Promise<void>;
+    deleteSession(sessionId: string, userId: string, kbId: string): Promise<void>;
     feedbackMessage(messageId: string, userId: string, type: 'like' | 'dislike', comment?: string): Promise<{
         id: string;
         type: string;

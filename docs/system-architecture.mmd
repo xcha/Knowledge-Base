@@ -22,11 +22,11 @@ graph TB
     subgraph 网关层["🔀 网关层 - Nginx"]
         N1["反向代理 + HTTPS"]
         N2["/ → :5000 (前端)"]
-        N3["/api/ → :5001 (后端)"]
+        N3["/api/ → :3001 (后端)"]
         N4["SSE 流式关闭缓冲"]
     end
 
-    subgraph 后端层["⚙ 后端层 - NestJS :5001"]
+    subgraph 后端层["⚙ 后端层 - NestJS :3001"]
         subgraph 认证模块["🔐 Auth 模块"]
             A1["邮箱注册/登录"]
             A2["手机号注册<br/>短信验证码"]

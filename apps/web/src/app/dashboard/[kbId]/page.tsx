@@ -3,7 +3,16 @@
 import { getErrorMessage } from "@/lib/error";
 import { useEffect, useState, use, useCallback } from 'react';
 import Link from 'next/link';
-import { knowledgeApi, type Document, type KnowledgeBase } from '@/lib/api';
+import { knowledgeApi, teamApi, type Document, type KnowledgeBase, type Team } from '@/lib/api';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { Loading } from '@/components/Loading';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ArrowLeft, Network, MessageSquare, Upload, Pencil, Tag, Trash2, Save, X, Share2, Users } from 'lucide-react';
 
 export default function KbDetailPage({ params }: { params: Promise<{ kbId: string }> }) {
   const { kbId } = use(params);
@@ -17,16 +26,35 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const [tagsInput, setTagsInput] = useState('');
   const [editingTags, setEditingTags] = useState<string | null>(null);
   const [editTagsValue, setEditTagsValue] = useState('');
   const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  // 文档内容编辑
   const [editingContent, setEditingContent] = useState<string | null>(null);
   const [contentDocId, setContentDocId] = useState('');
   const [contentText, setContentText] = useState('');
   const [savingContent, setSavingContent] = useState(false);
+  const [myTeams, setMyTeams] = useState<Team[]>([]);
+  const [sharingKb, setSharingKb] = useState(false);
+
+  async function loadTeams() {
+    try { const res = await teamApi.listMine(); setMyTeams(res.data); } catch { /* */ }
+  }
+
+  async function handleShareKb(teamId: string) {
+    await teamApi.shareKb(teamId, kbId);
+    setSharingKb(false);
+    fetchDocs(selectedTag);
+  }
+
+  async function handleUnshareKb() {
+    if (!confirm('取消共享后团队成员将无法访问此知识库，确认？')) return;
+    if (!kbInfo?.teamId) return;
+    await teamApi.unshareKb(kbInfo.teamId, kbId);
+    fetchDocs(selectedTag);
+  }
 
   async function handleRenameDoc(docId: string) {
     if (!renameValue.trim()) return;
@@ -35,7 +63,6 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
     fetchDocs(selectedTag);
   }
 
-  // 打开文档内容编辑器
   async function openContentEditor(docId: string) {
     try {
       const res = await knowledgeApi.getDocumentContent(kbId, docId);
@@ -47,7 +74,6 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
     }
   }
 
-  // 保存文档内容
   async function handleSaveContent() {
     if (!contentText.trim()) return;
     setSavingContent(true);
@@ -91,9 +117,7 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
 
   useEffect(() => { fetchDocs(selectedTag); }, [fetchDocs, selectedTag]);
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadFile(file: File) {
     setUploading(true);
     setUploadResult('');
     try {
@@ -105,8 +129,31 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
       setUploadResult(getErrorMessage(err, '上传失败'));
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+    e.target.value = '';
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadFile(file);
   }
 
   async function handleDelete(docId: string, name: string) {
@@ -130,183 +177,199 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 space-y-2">
+    <div className="min-h-screen bg-muted/30">
+      <header className="bg-background border-b border-border px-6 py-4 space-y-2">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-900">← 返回</Link>
-          <h1 className="text-lg font-semibold text-gray-900">文档管理</h1>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/dashboard"><ArrowLeft className="size-4" /> 返回</Link>
+          </Button>
+          <h1 className="text-lg font-semibold text-foreground">文档管理</h1>
           <div className="ml-auto flex gap-2">
-            <Link href={`/dashboard/${kbId}/graph`}
-              className="text-sm text-gray-500 hover:text-purple-600 border border-gray-300 px-3 py-1.5 rounded-lg transition">
-              🕸 知识图谱
-            </Link>
-            <Link href={`/dashboard/${kbId}/chat`}
-              className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-              开始对话
-            </Link>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/dashboard/${kbId}/graph`}>
+                <Network className="size-4" /> 知识图谱
+              </Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href={`/dashboard/${kbId}/chat`}>
+                <MessageSquare className="size-4" /> 开始对话
+              </Link>
+            </Button>
           </div>
         </div>
 
-        {/* 知识库名称/描述编辑区 */}
         {editingKb ? (
           <div className="flex items-center gap-3 flex-wrap">
-            <input autoFocus value={kbName}
-              onChange={(e) => setKbName(e.target.value)}
-              placeholder="知识库名称"
-              className="border border-blue-400 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none w-48" />
-            <input value={kbDesc}
-              onChange={(e) => setKbDesc(e.target.value)}
-              placeholder="描述（可选）"
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[200px]" />
-            <button onClick={handleUpdateKb}
-              className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition">保存</button>
-            <button onClick={() => setEditingKb(false)}
-              className="text-xs text-gray-400 hover:text-gray-600">取消</button>
+            <Input autoFocus value={kbName} onChange={(e) => setKbName(e.target.value)}
+              placeholder="知识库名称" className="w-48" />
+            <Input value={kbDesc} onChange={(e) => setKbDesc(e.target.value)}
+              placeholder="描述（可选）" className="flex-1 min-w-[200px]" />
+            <Button size="sm" onClick={handleUpdateKb}>保存</Button>
+            <Button variant="ghost" size="sm" onClick={() => setEditingKb(false)}>取消</Button>
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-medium text-gray-900">{kbInfo?.name ?? '加载中...'}</h2>
-            {kbInfo?.description && (
-              <span className="text-xs text-gray-400">— {kbInfo.description}</span>
-            )}
-            <button onClick={() => setEditingKb(true)}
-              className="text-xs text-gray-400 hover:text-blue-600 transition ml-1">✏️ 编辑</button>
+            <h2 className="text-sm font-medium text-foreground">{kbInfo?.name ?? '加载中...'}</h2>
+            {kbInfo?.description && <span className="text-xs text-muted-foreground">— {kbInfo.description}</span>}
+            <Button variant="ghost" size="sm" onClick={() => setEditingKb(true)} className="text-muted-foreground">
+              <Pencil className="size-3" /> 编辑
+            </Button>
+            <div className="relative ml-2">
+              {kbInfo?.team ? (
+                <span className="flex items-center gap-1">
+                  <Badge variant="default" className="text-xs">
+                    <Users className="size-3 mr-1" /> {kbInfo.team.name}
+                  </Badge>
+                  <Button variant="ghost" size="sm" onClick={handleUnshareKb}
+                    className="text-destructive hover:text-destructive text-xs h-6">取消</Button>
+                </span>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => { setSharingKb(!sharingKb); loadTeams(); }}
+                  className="text-muted-foreground">
+                  <Share2 className="size-3" /> 共享
+                </Button>
+              )}
+              {sharingKb && (
+                <div className="absolute top-full mt-1 left-0 bg-background border border-border rounded-lg shadow-lg p-2 z-10 min-w-[160px]">
+                  <p className="text-[10px] text-muted-foreground mb-1">共享到团队：</p>
+                  {myTeams.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">还没有团队，去创建 →</p>
+                  ) : (
+                    myTeams.map((t) => (
+                      <Button key={t.id} variant="ghost" size="sm"
+                        onClick={() => handleShareKb(t.id)}
+                        className="w-full justify-start text-xs">{t.name}</Button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
-        {/* 上传区域 */}
-        <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-6 hover:border-blue-400 transition">
-          <p className="text-gray-500 text-sm mb-3">支持 .txt / .md / .pdf 文件</p>
+        <Card
+          className={`mb-6 border-dashed transition-colors ${isDragging ? 'border-primary bg-primary/5' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <CardContent className="p-8 text-center">
+            <Upload className={`size-8 mx-auto mb-3 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+            <p className="text-muted-foreground text-sm mb-3">
+              {isDragging ? '松开即可上传' : '拖拽文件到此处，或点击下方按钮选择文件'}
+            </p>
+            <p className="text-muted-foreground text-xs mb-3">支持 .txt / .md / .pdf</p>
+            <div className="mb-3">
+              <Input type="text" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="标签（可选，逗号分隔，如：技术,前端,React）"
+                className="max-w-xs mx-auto text-xs" />
+            </div>
+            <label className="cursor-pointer">
+              <Button asChild disabled={uploading}>
+                <span>{uploading ? '上传中...' : '选择文件上传'}</span>
+              </Button>
+              <input type="file" accept=".txt,.md,.pdf" className="hidden"
+                onChange={handleUpload} disabled={uploading} />
+            </label>
+            {uploadResult && <p className="mt-3 text-sm text-green-600">{uploadResult}</p>}
+          </CardContent>
+        </Card>
 
-          {/* 标签输入 */}
-          <div className="mb-3">
-            <input
-              type="text"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="标签（可选，逗号分隔，如：技术,前端,React）"
-              className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <label className="cursor-pointer">
-            <span className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-              {uploading ? '上传中...' : '选择文件上传'}
-            </span>
-            <input type="file" accept=".txt,.md,.pdf" className="hidden"
-              onChange={handleUpload} disabled={uploading} />
-          </label>
-          {uploadResult && (<p className="mt-3 text-sm text-green-600">{uploadResult}</p>)}
-        </div>
-
-        {/* 文档内容编辑器（点击文档卡片上的"编辑"按钮打开） */}
         {editingContent && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-900">编辑文档内容</h3>
-              <button onClick={() => setEditingContent(null)}
-                className="text-xs text-gray-400 hover:text-gray-600">关闭</button>
-            </div>
-            <textarea
-              autoFocus
-              value={contentText}
-              onChange={(e) => setContentText(e.target.value)}
-              rows={16}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono resize-y"
-              placeholder="文档内容..."
-            />
-            <div className="flex gap-2">
-              <button onClick={handleSaveContent} disabled={savingContent}
-                className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
-                {savingContent ? '保存中...' : '保存并重新向量化'}
-              </button>
-              <button onClick={() => setEditingContent(null)}
-                className="text-sm px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">
-                取消
-              </button>
-            </div>
-          </div>
+          <Card className="mb-6">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-foreground">编辑文档内容</h3>
+                <Button variant="ghost" size="sm" onClick={() => setEditingContent(null)}>
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <Textarea autoFocus value={contentText} onChange={(e) => setContentText(e.target.value)}
+                rows={16} className="font-mono resize-y" placeholder="文档内容..." />
+              <div className="flex gap-2">
+                <Button onClick={handleSaveContent} disabled={savingContent}>
+                  <Save className="size-4" />
+                  {savingContent ? '保存中...' : '保存并重新向量化'}
+                </Button>
+                <Button variant="outline" onClick={() => setEditingContent(null)}>取消</Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* 标签筛选 */}
         {allTags.length > 0 && (
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <span className="text-xs text-gray-400">筛选：</span>
-            <button onClick={() => setSelectedTag('')}
-              className={`text-xs px-2.5 py-1 rounded-full transition ${
-                !selectedTag ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}>全部</button>
-            {allTags.map((tag) => (
-              <button key={tag} onClick={() => setSelectedTag(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full transition ${
-                  selectedTag === tag ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}>{tag}</button>
-            ))}
+          <div className="mb-4">
+            <ToggleGroup value={[selectedTag]} onValueChange={(v: string[]) => setSelectedTag(v[0] ?? '')}
+              className="justify-start flex-wrap">
+              <ToggleGroupItem value="" className="text-xs">全部</ToggleGroupItem>
+              {allTags.map((tag) => (
+                <ToggleGroupItem key={tag} value={tag} className="text-xs">{tag}</ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
         )}
 
-        {/* 文档列表 */}
-        <h2 className="text-base font-medium text-gray-900 mb-3">
-          已上传文档（{docs.length}）
-        </h2>
+        <h2 className="text-base font-medium text-foreground mb-3">已上传文档（{docs.length}）</h2>
         {loading ? (
-          <p className="text-sm text-gray-400">加载中...</p>
+          <Loading />
         ) : docs.length === 0 ? (
-          <p className="text-sm text-gray-400">还没有文档，上传第一个文件开始吧</p>
+          <p className="text-sm text-muted-foreground">还没有文档，上传第一个文件开始吧</p>
         ) : (
           <div className="space-y-2">
             {docs.map((doc) => (
-              <div key={doc.id}
-                className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    {renamingDocId === doc.id ? (
-                      <input autoFocus value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameDoc(doc.id); if (e.key === 'Escape') setRenamingDocId(null); }}
-                        onBlur={() => setRenamingDocId(null)}
-                        className="border border-blue-400 rounded px-2 py-0.5 text-sm focus:outline-none" />
-                    ) : (
-                      <p className="text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-blue-600"
-                        onDoubleClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.originalName); }}>
-                        {doc.originalName}
-                      </p>
-                    )}
-                    {doc.tags && doc.tags.split(',').filter(Boolean).map((t) => (
-                      <span key={t} className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">{t.trim()}</span>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {formatSize(doc.size)} · {doc._count.chunks} 个向量块
-                    {doc.version > 1 && <span className="ml-2 text-amber-500">v{doc.version}</span>}
-                  </p>
-
-                  {/* 编辑标签 */}
-                  {editingTags === doc.id && (
-                    <div className="mt-2 flex gap-2">
-                      <input autoFocus value={editTagsValue}
-                        onChange={(e) => setEditTagsValue(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTags(doc.id); }}
-                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      <button onClick={() => handleSaveTags(doc.id)}
-                        className="text-xs bg-blue-600 text-white px-2 py-1 rounded">保存</button>
-                      <button onClick={() => setEditingTags(null)}
-                        className="text-xs text-gray-400 hover:text-gray-600">取消</button>
+              <Card key={doc.id}>
+                <CardContent className="px-4 py-3 flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {renamingDocId === doc.id ? (
+                        <Input autoFocus value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleRenameDoc(doc.id); if (e.key === 'Escape') setRenamingDocId(null); }}
+                          onBlur={() => setRenamingDocId(null)}
+                          className="h-7 text-sm w-48" />
+                      ) : (
+                        <p className="text-sm font-medium text-foreground truncate cursor-pointer hover:text-primary"
+                          onDoubleClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.originalName); }}>
+                          {doc.originalName}
+                        </p>
+                      )}
+                      {doc.tags && doc.tags.split(',').filter(Boolean).map((t) => (
+                        <Badge key={t} variant="secondary" className="text-[10px]">{t.trim()}</Badge>
+                      ))}
                     </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 ml-4">
-                  <button onClick={(e) => { e.stopPropagation(); openContentEditor(doc.id); }}
-                    className="text-xs text-gray-400 hover:text-green-600 transition">编辑</button>
-                  <button onClick={() => { setEditingTags(doc.id); setEditTagsValue(doc.tags); }}
-                    className="text-xs text-gray-400 hover:text-blue-600 transition px-1">标签</button>
-                  <button onClick={() => handleDelete(doc.id, doc.originalName)}
-                    className="text-sm text-red-400 hover:text-red-600 ml-1 transition">删除</button>
-                </div>
-              </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatSize(doc.size)} · {doc._count.chunks} 个向量块
+                      {doc.version > 1 && <span className="ml-2 text-amber-500">v{doc.version}</span>}
+                    </p>
+                    {editingTags === doc.id && (
+                      <div className="mt-2 flex gap-2">
+                        <Input autoFocus value={editTagsValue}
+                          onChange={(e) => setEditTagsValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTags(doc.id); }}
+                          className="flex-1 h-7 text-xs" />
+                        <Button size="sm" onClick={() => handleSaveTags(doc.id)}>保存</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingTags(null)}>取消</Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 ml-4">
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openContentEditor(doc.id); }}
+                      className="text-muted-foreground hover:text-green-600">
+                      <Pencil className="size-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setEditingTags(doc.id); setEditTagsValue(doc.tags); }}
+                      className="text-muted-foreground hover:text-primary">
+                      <Tag className="size-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id, doc.originalName)}
+                      className="text-destructive hover:text-destructive">
+                      <Trash2 className="size-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}

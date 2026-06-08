@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import * as svgCaptcha from 'svg-captcha';
+import { randomInt } from 'crypto';
 
 // 图片验证码内存存储：key=验证码ID, value={text, expiresAt}
 const captchaStore = new Map<string, { text: string; expiresAt: number }>();
@@ -67,7 +68,7 @@ export class AuthService {
   async sendSmsCode(
     phone: string,
     type: string = 'register',
-  ): Promise<{ success: boolean; code?: string }> {
+  ): Promise<{ success: boolean }> {
     // 60秒内不允许重复发送
     const recent = await this.prisma.smsCode.findFirst({
       where: {
@@ -78,8 +79,8 @@ export class AuthService {
     });
     if (recent) throw new BadRequestException('发送过于频繁，请60秒后再试');
 
-    // 生成6位随机数字验证码
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    // 生成6位随机数字验证码（使用 crypto 安全随机数）
+    const code = String(randomInt(100000, 1000000));
 
     await this.prisma.smsCode.create({
       data: {
@@ -93,9 +94,9 @@ export class AuthService {
     // TODO: 生产环境接入阿里云短信发送
     // await this.sendViaAlibabaSms(phone, code);
 
-    // 开发阶段直接返回验证码，方便调试
+    // 开发阶段日志输出验证码，方便调试
     console.log(`[SMS] 手机号 ${phone} 验证码: ${code}`);
-    return { success: true, code };
+    return { success: true };
   }
 
   // 验证短信验证码

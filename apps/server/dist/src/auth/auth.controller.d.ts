@@ -10,7 +10,6 @@ export declare class AuthController {
     getCaptcha(res: Response): void;
     sendSms(dto: SendSmsDto): Promise<{
         success: boolean;
-        code?: string;
     } | {
         success: boolean;
         message: string;
