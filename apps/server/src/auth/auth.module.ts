@@ -16,7 +16,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
         // expiresIn 使用字面量避免 StringValue 类型兼容问题
-        signOptions: { expiresIn: '7d' as const },
+        signOptions: { expiresIn: '30d' as const },
       }),
     }),
   ],
