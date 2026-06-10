@@ -3,7 +3,7 @@
 import { getErrorMessage } from "@/lib/error";
 import { useEffect, useState, use, useCallback } from 'react';
 import Link from 'next/link';
-import { knowledgeApi, teamApi, type Document, type KnowledgeBase, type Team } from '@/lib/api';
+import { knowledgeApi, teamApi, type Document, type KnowledgeBase, type Team, type FolderNode } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Loading } from '@/components/Loading';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ArrowLeft, Network, MessageSquare, Upload, Pencil, Tag, Trash2, Save, X, Share2, Users } from 'lucide-react';
+import { ArrowLeft, Network, MessageSquare, Upload, Pencil, Tag, Trash2, Save, X, Share2, Users, History, Clock, Folder } from 'lucide-react';
+import type { DocVersion } from '@/lib/types';
 
 export default function KbDetailPage({ params }: { params: Promise<{ kbId: string }> }) {
   const { kbId } = use(params);
@@ -38,6 +39,12 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
   const [savingContent, setSavingContent] = useState(false);
   const [myTeams, setMyTeams] = useState<Team[]>([]);
   const [sharingKb, setSharingKb] = useState(false);
+  const [versionHistory, setVersionHistory] = useState<DocVersion[] | null>(null);
+  const [versionDocName, setVersionDocName] = useState('');
+  const [folderTree, setFolderTree] = useState<FolderNode | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<string>('');
+  const [movingDocId, setMovingDocId] = useState<string | null>(null);
+  const [moveTarget, setMoveTarget] = useState('/');
 
   async function loadTeams() {
     try { const res = await teamApi.listMine(); setMyTeams(res.data); } catch { /* */ }
@@ -88,12 +95,13 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
     }
   }
 
-  const fetchDocs = useCallback(async (tag?: string) => {
+  const fetchDocs = useCallback(async (tag?: string, folder?: string) => {
     try {
-      const [kbsRes, docsRes, tagsRes] = await Promise.all([
+      const [kbsRes, docsRes, tagsRes, foldersRes] = await Promise.all([
         knowledgeApi.list(),
-        knowledgeApi.listDocuments(kbId, tag),
+        knowledgeApi.listDocuments(kbId, tag, folder),
         knowledgeApi.getTags(kbId),
+        knowledgeApi.getFolders(kbId),
       ]);
       const kb = kbsRes.data.find((k) => k.id === kbId) ?? null;
       setKbInfo(kb);
@@ -103,6 +111,7 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
       }
       setDocs(docsRes.data);
       setAllTags(tagsRes.data);
+      setFolderTree(foldersRes.data);
     } finally {
       setLoading(false);
     }
@@ -115,7 +124,7 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
     fetchDocs(selectedTag);
   }
 
-  useEffect(() => { fetchDocs(selectedTag); }, [fetchDocs, selectedTag]);
+  useEffect(() => { fetchDocs(selectedTag, selectedFolder); }, [fetchDocs, selectedTag, selectedFolder]);
 
   async function uploadFile(file: File) {
     setUploading(true);
@@ -167,6 +176,47 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
     await knowledgeApi.updateTags(kbId, docId, editTagsValue);
     setEditingTags(null);
     fetchDocs(selectedTag);
+  }
+
+  async function openVersionHistory(docId: string, docName: string) {
+    try {
+      const res = await knowledgeApi.getVersions(kbId, docId);
+      setVersionHistory(res.data);
+      setVersionDocName(docName);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, '加载版本历史失败'));
+    }
+  }
+
+  async function handleMoveToFolder(docId: string) {
+    if (!moveTarget.trim()) return;
+    try {
+      await knowledgeApi.updateFolder(kbId, docId, moveTarget);
+      setMovingDocId(null);
+      setMoveTarget('/');
+      fetchDocs(selectedTag, selectedFolder);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, '移动失败'));
+    }
+  }
+
+  function renderFolderTree(node: FolderNode, depth: number = 0) {
+    return (
+      <div key={node.path}>
+        <button
+          onClick={() => setSelectedFolder(node.path === selectedFolder ? '' : node.path)}
+          className={`w-full text-left px-2 py-1.5 text-sm rounded-md transition ${
+            selectedFolder === node.path
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:bg-muted'
+          }`}
+          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        >
+          {node.name === '/' ? '📁 全部文档' : `📁 ${node.name}`}
+        </button>
+        {node.children.map(child => renderFolderTree(child, depth + 1))}
+      </div>
+    );
   }
 
   function formatSize(bytes: number) {
@@ -299,19 +349,111 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
           </Card>
         )}
 
-        {allTags.length > 0 && (
-          <div className="mb-4">
-            <ToggleGroup value={[selectedTag]} onValueChange={(v: string[]) => setSelectedTag(v[0] ?? '')}
-              className="justify-start flex-wrap">
-              <ToggleGroupItem value="" className="text-xs">全部</ToggleGroupItem>
-              {allTags.map((tag) => (
-                <ToggleGroupItem key={tag} value={tag} className="text-xs">{tag}</ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
+        {versionHistory && (
+          <Card className="mb-6">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-foreground">
+                  <History className="size-4 inline mr-2" />
+                  版本历史 — {versionDocName}
+                </h3>
+                <Button variant="ghost" size="sm" onClick={() => setVersionHistory(null)}>
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {versionHistory.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition">
+                    <div className="flex items-center gap-3">
+                      <Badge variant={v.version === versionHistory[versionHistory.length - 1]?.version ? 'default' : 'secondary'}>
+                        v{v.version}
+                      </Badge>
+                      <div>
+                        <p className="text-sm text-foreground">{v.originalName}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Clock className="size-3" />
+                          {new Date(v.createdAt).toLocaleString('zh-CN')}
+                          <span className="ml-2">{formatSize(v.size)} · {v._count.chunks} 个向量块</span>
+                        </p>
+                      </div>
+                    </div>
+                    {v.version === versionHistory[versionHistory.length - 1]?.version && (
+                      <Badge variant="outline" className="text-xs">当前版本</Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        <h2 className="text-base font-medium text-foreground mb-3">已上传文档（{docs.length}）</h2>
+        {movingDocId && (
+          <Card className="mb-6">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-foreground">
+                  <Folder className="size-4 inline mr-2" />
+                  移动到文件夹
+                </h3>
+                <Button variant="ghost" size="sm" onClick={() => setMovingDocId(null)}>
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  value={moveTarget}
+                  onChange={(e) => setMoveTarget(e.target.value)}
+                  placeholder="输入文件夹路径，如 /技术/前端/"
+                  className="flex-1"
+                />
+                <Button onClick={() => handleMoveToFolder(movingDocId)}>移动</Button>
+                <Button variant="outline" onClick={() => setMovingDocId(null)}>取消</Button>
+              </div>
+              {folderTree && folderTree.children.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  <p className="mb-1">已有文件夹：</p>
+                  <div className="flex flex-wrap gap-1">
+                    {folderTree.children.map(child => (
+                      <Button key={child.path} variant="ghost" size="sm" className="h-6 text-xs"
+                        onClick={() => setMoveTarget(child.path)}>
+                        {child.path}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 文件夹树 + 标签筛选 */}
+        <div className="flex gap-4 mb-4">
+          {folderTree && folderTree.children.length > 0 && (
+            <Card className="w-48 shrink-0">
+              <CardContent className="p-2">
+                <p className="text-xs font-medium text-muted-foreground mb-2 px-2">文件夹</p>
+                {renderFolderTree(folderTree)}
+              </CardContent>
+            </Card>
+          )}
+          <div className="flex-1">
+            {allTags.length > 0 && (
+              <div className="mb-4">
+                <ToggleGroup value={[selectedTag]} onValueChange={(v: string[]) => setSelectedTag(v[0] ?? '')}
+                  className="justify-start flex-wrap">
+                  <ToggleGroupItem value="" className="text-xs">全部</ToggleGroupItem>
+                  {allTags.map((tag) => (
+                    <ToggleGroupItem key={tag} value={tag} className="text-xs">{tag}</ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
+            )}
+
+            <h2 className="text-base font-medium text-foreground mb-3">
+              已上传文档（{docs.length}）
+              {selectedFolder && <span className="text-sm font-normal text-muted-foreground ml-2">— {selectedFolder}</span>}
+            </h2>
         {loading ? (
           <Loading />
         ) : docs.length === 0 ? (
@@ -363,6 +505,16 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
                       className="text-muted-foreground hover:text-primary">
                       <Tag className="size-3" />
                     </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setMovingDocId(doc.id); setMoveTarget(doc.folder || '/'); }}
+                      className="text-muted-foreground hover:text-orange-600">
+                      <Folder className="size-3" />
+                    </Button>
+                    {doc.version > 1 && (
+                      <Button variant="ghost" size="sm" onClick={() => openVersionHistory(doc.id, doc.originalName)}
+                        className="text-muted-foreground hover:text-blue-600">
+                        <History className="size-3" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id, doc.originalName)}
                       className="text-destructive hover:text-destructive">
                       <Trash2 className="size-3" />
@@ -373,6 +525,8 @@ export default function KbDetailPage({ params }: { params: Promise<{ kbId: strin
             ))}
           </div>
         )}
+          </div>
+        </div>
       </main>
     </div>
   );

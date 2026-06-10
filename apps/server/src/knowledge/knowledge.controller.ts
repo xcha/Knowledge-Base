@@ -72,8 +72,15 @@ export class KnowledgeController {
     @Param('id') knowledgeBaseId: string,
     @Request() req: AuthRequest,
     @Query('tag') tag?: string,
+    @Query('folder') folder?: string,
   ) {
-    return this.knowledge.listDocuments(knowledgeBaseId, req.user.id, tag);
+    return this.knowledge.listDocuments(knowledgeBaseId, req.user.id, tag, folder);
+  }
+
+  // 获取文件夹树
+  @Get(':id/folders')
+  getFolders(@Param('id') knowledgeBaseId: string, @Request() req: AuthRequest) {
+    return this.knowledge.getAllFolders(knowledgeBaseId, req.user.id);
   }
 
   // 重命名文档
@@ -84,6 +91,16 @@ export class KnowledgeController {
     @Body() body: { originalName: string },
   ) {
     return this.knowledge.renameDocument(docId, req.user.id, body.originalName);
+  }
+
+  // 更新文档文件夹
+  @Patch(':id/documents/:docId/folder')
+  updateFolder(
+    @Param('docId') docId: string,
+    @Request() req: AuthRequest,
+    @Body() body: { folder: string },
+  ) {
+    return this.knowledge.updateDocumentFolder(docId, req.user.id, body.folder);
   }
 
   // 更新文档内容（重新分块+向量化）

@@ -150,16 +150,71 @@ let KnowledgeService = class KnowledgeService {
     async getEmbedding(text) {
         return this.embedder.embedQuery(text);
     }
-    async listDocuments(knowledgeBaseId, userId, tag) {
+    async listDocuments(knowledgeBaseId, userId, tag, folder) {
         await this.checkKbAccess(knowledgeBaseId, userId);
         const where = { knowledgeBaseId };
         if (tag) {
             where.tags = { contains: tag };
         }
+        if (folder) {
+            where.folder = folder;
+        }
         return this.prisma.document.findMany({
             where,
             include: { _count: { select: { chunks: true } } },
             orderBy: { createdAt: 'desc' },
+        });
+    }
+    async getAllFolders(knowledgeBaseId, userId) {
+        await this.checkKbAccess(knowledgeBaseId, userId);
+        const docs = await this.prisma.document.findMany({
+            where: { knowledgeBaseId },
+            select: { folder: true },
+        });
+        const folderSet = new Set();
+        docs.forEach((d) => {
+            if (d.folder)
+                folderSet.add(d.folder);
+        });
+        const root = { name: '/', path: '/', children: [] };
+        const nodeMap = new Map();
+        nodeMap.set('/', root);
+        const sortedFolders = Array.from(folderSet).sort();
+        for (const folder of sortedFolders) {
+            const parts = folder.split('/').filter(Boolean);
+            let currentPath = '/';
+            let parentNode = root;
+            for (const part of parts) {
+                const parentPath = currentPath;
+                currentPath = currentPath === '/' ? `/${part}/` : `${currentPath}${part}/`;
+                if (!nodeMap.has(currentPath)) {
+                    const newNode = { name: part, path: currentPath, children: [] };
+                    nodeMap.set(currentPath, newNode);
+                    parentNode.children.push(newNode);
+                }
+                parentNode = nodeMap.get(currentPath);
+            }
+        }
+        return root;
+    }
+    async updateDocumentFolder(documentId, userId, folder) {
+        const doc = await this.prisma.document.findFirst({
+            where: { id: documentId },
+            include: { knowledgeBase: true },
+        });
+        if (!doc)
+            throw new common_1.NotFoundException('文档不存在');
+        await this.checkKbAccess(doc.knowledgeBaseId, userId);
+        let normalizedFolder = folder.trim();
+        if (!normalizedFolder.startsWith('/'))
+            normalizedFolder = '/' + normalizedFolder;
+        if (!normalizedFolder.endsWith('/'))
+            normalizedFolder = normalizedFolder + '/';
+        if (normalizedFolder === '//')
+            normalizedFolder = '/';
+        return this.prisma.document.update({
+            where: { id: documentId },
+            data: { folder: normalizedFolder },
         });
     }
     async getAllTags(knowledgeBaseId, userId) {

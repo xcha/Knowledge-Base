@@ -53,11 +53,17 @@ let KnowledgeController = class KnowledgeController {
         const content = await extractText(file);
         return this.knowledge.uploadDocument(knowledgeBaseId, req.user.id, file, content, tags);
     }
-    listDocuments(knowledgeBaseId, req, tag) {
-        return this.knowledge.listDocuments(knowledgeBaseId, req.user.id, tag);
+    listDocuments(knowledgeBaseId, req, tag, folder) {
+        return this.knowledge.listDocuments(knowledgeBaseId, req.user.id, tag, folder);
+    }
+    getFolders(knowledgeBaseId, req) {
+        return this.knowledge.getAllFolders(knowledgeBaseId, req.user.id);
     }
     renameDocument(docId, req, body) {
         return this.knowledge.renameDocument(docId, req.user.id, body.originalName);
+    }
+    updateFolder(docId, req, body) {
+        return this.knowledge.updateDocumentFolder(docId, req.user.id, body.folder);
     }
     updateContent(docId, req, body) {
         return this.knowledge.updateDocumentContent(docId, req.user.id, body.content);
@@ -136,10 +142,19 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __param(2, (0, common_1.Query)('tag')),
+    __param(3, (0, common_1.Query)('folder')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:paramtypes", [String, Object, String, String]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "listDocuments", null);
+__decorate([
+    (0, common_1.Get)(':id/folders'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], KnowledgeController.prototype, "getFolders", null);
 __decorate([
     (0, common_1.Patch)(':id/documents/:docId'),
     __param(0, (0, common_1.Param)('docId')),
@@ -149,6 +164,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "renameDocument", null);
+__decorate([
+    (0, common_1.Patch)(':id/documents/:docId/folder'),
+    __param(0, (0, common_1.Param)('docId')),
+    __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], KnowledgeController.prototype, "updateFolder", null);
 __decorate([
     (0, common_1.Patch)(':id/documents/:docId/content'),
     __param(0, (0, common_1.Param)('docId')),

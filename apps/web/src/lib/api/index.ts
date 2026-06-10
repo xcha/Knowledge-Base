@@ -8,5 +8,5 @@ export { teamApi } from './team';
 export type {
   User, UserProfile, KnowledgeBase, Document, DocVersion,
   ChatSession, ChatMessage, Team, PaymentOrder, UserStatistics,
-  GraphData, FeedbackData,
+  GraphData, FeedbackData, ModelInfo, FolderNode,
 } from '../types';

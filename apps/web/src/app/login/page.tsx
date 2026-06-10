@@ -27,7 +27,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authApi.login(email, password);
-      setAuth(res.data.user, res.data.token);
+      setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       router.push('/dashboard');
     } catch (err: unknown) {
       setError(getErrorMessage(err, '登录失败'));

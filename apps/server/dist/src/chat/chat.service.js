@@ -22,7 +22,6 @@ let ChatService = ChatService_1 = class ChatService {
     vector;
     knowledge;
     logger = new common_1.Logger(ChatService_1.name);
-    llm = (0, llm_provider_1.createClaudeLlm)();
     constructor(prisma, vector, knowledge) {
         this.prisma = prisma;
         this.vector = vector;
@@ -82,7 +81,7 @@ let ChatService = ChatService_1 = class ChatService {
         const dislikes = list.filter((f) => f.type === 'dislike').length;
         return { likes, dislikes, total: list.length, list };
     }
-    async chatStream(sessionId, userId, question, res) {
+    async chatStream(sessionId, userId, question, res, model) {
         const session = await this.prisma.chatSession.findFirst({
             where: { id: sessionId },
             include: { knowledgeBase: true },
@@ -115,9 +114,10 @@ ${context}`),
             data: { role: 'user', content: question, sessionId },
         });
         (0, llm_provider_1.setupSseHeaders)(res);
+        const llm = (0, llm_provider_1.createLlm)(model);
         let fullContent = '';
         try {
-            const stream = await this.llm.stream(messages);
+            const stream = await llm.stream(messages);
             for await (const chunk of stream) {
                 const text = chunk.content;
                 if (text) {

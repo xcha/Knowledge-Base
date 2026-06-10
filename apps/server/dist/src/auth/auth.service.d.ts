@@ -1,11 +1,13 @@
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
 export declare class AuthService {
     private prisma;
     private jwt;
     private sms;
-    constructor(prisma: PrismaService, jwt: JwtService, sms: SmsService);
+    private config;
+    constructor(prisma: PrismaService, jwt: JwtService, sms: SmsService, config: ConfigService);
     generateCaptcha(): {
         id: string;
         svg: string;
@@ -15,7 +17,17 @@ export declare class AuthService {
         success: boolean;
     }>;
     verifySmsCode(phone: string, code: string, type: string): Promise<boolean>;
+    private signTokenPair;
+    refresh(refreshToken: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
+    }>;
+    logout(refreshToken: string): Promise<{
+        success: boolean;
+    }>;
     register(email: string, password: string, name?: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
         user: {
             id: string;
             phone: string | null;
@@ -24,9 +36,10 @@ export declare class AuthService {
             email: string;
             membership: string;
         };
-        token: string;
     }>;
     registerByPhone(phone: string, smsCode: string | undefined, password: string, captchaId?: string, captchaAnswer?: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
         user: {
             id: string;
             phone: string | null;
@@ -35,9 +48,10 @@ export declare class AuthService {
             email: string;
             membership: string;
         };
-        token: string;
     }>;
     login(email: string, password: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
         user: {
             id: string;
             email: string;
@@ -46,7 +60,5 @@ export declare class AuthService {
             membership: string;
             membershipExpiresAt: Date | null;
         };
-        token: string;
     }>;
-    private signToken;
 }

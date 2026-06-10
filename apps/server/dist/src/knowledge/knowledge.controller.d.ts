@@ -8,9 +8,9 @@ export declare class KnowledgeController {
         id: string;
         createdAt: Date;
         name: string;
+        userId: string;
         updatedAt: Date;
         description: string | null;
-        userId: string;
         teamId: string | null;
     }>;
     list(req: AuthRequest): Promise<({
@@ -25,9 +25,9 @@ export declare class KnowledgeController {
         id: string;
         createdAt: Date;
         name: string;
+        userId: string;
         updatedAt: Date;
         description: string | null;
-        userId: string;
         teamId: string | null;
     })[]>;
     updateKb(id: string, req: AuthRequest, body: {
@@ -37,9 +37,9 @@ export declare class KnowledgeController {
         id: string;
         createdAt: Date;
         name: string;
+        userId: string;
         updatedAt: Date;
         description: string | null;
-        userId: string;
         teamId: string | null;
     }>;
     deleteKb(id: string, req: AuthRequest): Promise<void>;
@@ -48,7 +48,7 @@ export declare class KnowledgeController {
         chunkCount: number;
         version: number;
     }>;
-    listDocuments(knowledgeBaseId: string, req: AuthRequest, tag?: string): Promise<({
+    listDocuments(knowledgeBaseId: string, req: AuthRequest, tag?: string, folder?: string): Promise<({
         _count: {
             chunks: number;
         };
@@ -60,10 +60,12 @@ export declare class KnowledgeController {
         originalName: string;
         mimeType: string;
         tags: string;
+        folder: string;
         version: number;
         parentDocumentId: string | null;
         knowledgeBaseId: string;
     })[]>;
+    getFolders(knowledgeBaseId: string, req: AuthRequest): Promise<import("./knowledge.service").FolderNode>;
     renameDocument(docId: string, req: AuthRequest, body: {
         originalName: string;
     }): Promise<{
@@ -74,6 +76,22 @@ export declare class KnowledgeController {
         originalName: string;
         mimeType: string;
         tags: string;
+        folder: string;
+        version: number;
+        parentDocumentId: string | null;
+        knowledgeBaseId: string;
+    }>;
+    updateFolder(docId: string, req: AuthRequest, body: {
+        folder: string;
+    }): Promise<{
+        size: number;
+        id: string;
+        createdAt: Date;
+        filename: string;
+        originalName: string;
+        mimeType: string;
+        tags: string;
+        folder: string;
         version: number;
         parentDocumentId: string | null;
         knowledgeBaseId: string;
@@ -101,6 +119,7 @@ export declare class KnowledgeController {
         originalName: string;
         mimeType: string;
         tags: string;
+        folder: string;
         version: number;
         parentDocumentId: string | null;
         knowledgeBaseId: string;

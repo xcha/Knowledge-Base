@@ -1,5 +1,10 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
+export interface FolderNode {
+    name: string;
+    path: string;
+    children: FolderNode[];
+}
 export declare class KnowledgeService {
     private prisma;
     private vector;
@@ -14,9 +19,9 @@ export declare class KnowledgeService {
         id: string;
         createdAt: Date;
         name: string;
+        userId: string;
         updatedAt: Date;
         description: string | null;
-        userId: string;
         teamId: string | null;
     }>;
     listKnowledgeBases(userId: string): Promise<({
@@ -31,18 +36,18 @@ export declare class KnowledgeService {
         id: string;
         createdAt: Date;
         name: string;
+        userId: string;
         updatedAt: Date;
         description: string | null;
-        userId: string;
         teamId: string | null;
     })[]>;
     renameKnowledgeBase(id: string, userId: string, name: string): Promise<{
         id: string;
         createdAt: Date;
         name: string;
+        userId: string;
         updatedAt: Date;
         description: string | null;
-        userId: string;
         teamId: string | null;
     }>;
     updateKnowledgeBase(id: string, userId: string, data: {
@@ -52,9 +57,9 @@ export declare class KnowledgeService {
         id: string;
         createdAt: Date;
         name: string;
+        userId: string;
         updatedAt: Date;
         description: string | null;
-        userId: string;
         teamId: string | null;
     }>;
     deleteKnowledgeBase(id: string, userId: string): Promise<void>;
@@ -65,7 +70,7 @@ export declare class KnowledgeService {
     }>;
     private embedAndStore;
     getEmbedding(text: string): Promise<number[]>;
-    listDocuments(knowledgeBaseId: string, userId: string, tag?: string): Promise<({
+    listDocuments(knowledgeBaseId: string, userId: string, tag?: string, folder?: string): Promise<({
         _count: {
             chunks: number;
         };
@@ -77,10 +82,25 @@ export declare class KnowledgeService {
         originalName: string;
         mimeType: string;
         tags: string;
+        folder: string;
         version: number;
         parentDocumentId: string | null;
         knowledgeBaseId: string;
     })[]>;
+    getAllFolders(knowledgeBaseId: string, userId: string): Promise<FolderNode>;
+    updateDocumentFolder(documentId: string, userId: string, folder: string): Promise<{
+        size: number;
+        id: string;
+        createdAt: Date;
+        filename: string;
+        originalName: string;
+        mimeType: string;
+        tags: string;
+        folder: string;
+        version: number;
+        parentDocumentId: string | null;
+        knowledgeBaseId: string;
+    }>;
     getAllTags(knowledgeBaseId: string, userId: string): Promise<string[]>;
     updateDocumentTags(documentId: string, userId: string, tags: string): Promise<{
         size: number;
@@ -90,6 +110,7 @@ export declare class KnowledgeService {
         originalName: string;
         mimeType: string;
         tags: string;
+        folder: string;
         version: number;
         parentDocumentId: string | null;
         knowledgeBaseId: string;
@@ -150,6 +171,7 @@ export declare class KnowledgeService {
         originalName: string;
         mimeType: string;
         tags: string;
+        folder: string;
         version: number;
         parentDocumentId: string | null;
         knowledgeBaseId: string;

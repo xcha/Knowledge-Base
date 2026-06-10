@@ -16,11 +16,17 @@ import { ChatService } from './chat.service';
 import type { AuthRequest } from '../common/types';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { AVAILABLE_MODELS } from '../common/llm.provider';
 
 @UseGuards(JwtAuthGuard)
 @Controller('knowledge/:kbId/sessions')
 export class ChatController {
   constructor(private chatService: ChatService) {}
+
+  @Get('models')
+  getModels() {
+    return AVAILABLE_MODELS;
+  }
 
   @Post()
   createSession(
@@ -71,7 +77,7 @@ export class ChatController {
     @Body() dto: SendMessageDto,
     @Res() res: Response,
   ) {
-    await this.chatService.chatStream(sessionId, req.user.id, dto.question, res);
+    await this.chatService.chatStream(sessionId, req.user.id, dto.question, res, dto.model);
   }
 
   // 消息反馈（点赞/踩）

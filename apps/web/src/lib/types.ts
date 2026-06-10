@@ -45,6 +45,7 @@ export interface Document {
   size: number;
   mimeType: string;
   tags: string;
+  folder: string;
   version: number;
   createdAt: string;
   _count: { chunks: number };
@@ -62,6 +63,12 @@ export interface DocVersion {
 export interface GraphData {
   nodes: { id: string; name: string; symbolSize: number }[];
   links: { source: string; target: string; value: number }[];
+}
+
+export interface FolderNode {
+  name: string;
+  path: string;
+  children: FolderNode[];
 }
 
 // ====== 对话 ======
@@ -99,6 +106,14 @@ export interface Team {
   members?: { user: { id: string; email: string; name: string | null }; role: string }[];
   knowledgeBases?: KnowledgeBase[];
   createdAt: string;
+}
+
+// ====== 模型 ======
+
+export interface ModelInfo {
+  provider: string;
+  model: string;
+  label: string;
 }
 
 // ====== 支付 ======

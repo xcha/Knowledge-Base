@@ -7,6 +7,7 @@ import {
   type ChatSession,
   type ChatMessage,
   type FeedbackData,
+  type ModelInfo,
 } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
   Trash2,
   Loader2,
   Wrench,
+  Download,
 } from "lucide-react";
 
 type Mode = "rag" | "agent";
@@ -44,7 +46,7 @@ export default function ChatPage({
   params: Promise<{ kbId: string }>;
 }) {
   const { kbId } = use(params);
-  const token = useAuthStore((s) => s.token);
+  const token = useAuthStore((s) => s.accessToken);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -58,15 +60,15 @@ export default function ChatPage({
   );
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetchSessions();
-  }, [kbId]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingText]);
+  async function selectSession(sessionId: string) {
+    setActiveSession(sessionId);
+    const res = await chatApi.getMessages(kbId, sessionId);
+    setMessages(res.data);
+  }
 
   async function fetchSessions() {
     const res = await chatApi.listSessions(kbId);
@@ -76,11 +78,26 @@ export default function ChatPage({
     }
   }
 
-  async function selectSession(sessionId: string) {
-    setActiveSession(sessionId);
-    const res = await chatApi.getMessages(kbId, sessionId);
-    setMessages(res.data);
+  async function fetchModels() {
+    try {
+      const res = await chatApi.getModels(kbId);
+      setModels(res.data);
+      if (res.data.length > 0 && !selectedModel) {
+        setSelectedModel(res.data[0].model);
+      }
+    } catch {
+      // 静默失败，使用默认模型
+    }
   }
+
+  useEffect(() => {
+    fetchSessions();
+    fetchModels();
+  }, [kbId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, streamingText]);
 
   async function createSession() {
     const res = await chatApi.createSession(kbId);
@@ -139,7 +156,13 @@ export default function ChatPage({
         : `${base}/knowledge/${kbId}/agent/chat`;
 
     const body =
-      mode === "rag" ? { question } : { question, sessionId: activeSession };
+      mode === "rag"
+        ? { question, model: selectedModel || undefined }
+        : {
+            question,
+            sessionId: activeSession,
+            model: selectedModel || undefined,
+          };
 
     try {
       const res = await fetch(url, {
@@ -205,6 +228,31 @@ export default function ChatPage({
     }
   }
 
+  function exportChat(format: "markdown" | "txt") {
+    if (messages.length === 0) return;
+
+    const sessionTitle =
+      sessions.find((s) => s.id === activeSession)?.title || "对话记录";
+    const timestamp = new Date().toLocaleString("zh-CN");
+
+    let content = `# ${sessionTitle}\n\n导出时间：${timestamp}\n\n---\n\n`;
+
+    messages.forEach((msg) => {
+      const role = msg.role === "user" ? "👤 用户" : "🤖 AI";
+      content += `### ${role}\n\n${msg.content}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${sessionTitle}.${format === "markdown" ? "md" : "txt"}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="h-screen flex flex-col bg-muted/30">
       <header className="bg-background border-b border-border px-6 py-3 flex items-center gap-4 shrink-0">
@@ -215,7 +263,29 @@ export default function ChatPage({
         </Button>
         <h1 className="text-base font-semibold text-foreground">知识库对话</h1>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {messages.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportChat("markdown")}
+            >
+              <Download className="size-4" /> 导出
+            </Button>
+          )}
+          {models.length > 0 && (
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="h-8 px-2 text-xs rounded-md border border-border bg-background text-foreground"
+            >
+              {models.map((m) => (
+                <option key={m.model} value={m.model}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          )}
           <ToggleGroup
             value={[mode]}
             onValueChange={(v: string[]) => {

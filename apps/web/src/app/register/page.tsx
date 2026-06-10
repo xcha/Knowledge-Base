@@ -11,7 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, BookOpen, Sparkles, MessageSquare, BarChart3 } from "lucide-react";
+import {
+  Loader2,
+  BookOpen,
+  Sparkles,
+  MessageSquare,
+  BarChart3,
+} from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -55,7 +61,7 @@ export default function RegisterPage() {
       setError("请输入手机号");
       return;
     }
-    if (!captchaId || !captchaInput) {
+    if (!captchaInput) {
       setError("请输入图片验证码");
       return;
     }
@@ -79,7 +85,7 @@ export default function RegisterPage() {
         setError(res.data.message ?? "发送失败");
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, '发送失败'));
+      setError(getErrorMessage(err, "发送失败"));
     } finally {
       setSendingSms(false);
     }
@@ -91,10 +97,10 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await authApi.register(email, emailPassword, name);
-      setAuth(res.data.user, res.data.token);
+      setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, '注册失败'));
+      setError(getErrorMessage(err, "注册失败"));
     } finally {
       setLoading(false);
     }
@@ -110,10 +116,10 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await authApi.registerPhone(phone, smsCode, phonePassword);
-      setAuth(res.data.user, res.data.token);
+      setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, '注册失败'));
+      setError(getErrorMessage(err, "注册失败"));
     } finally {
       setLoading(false);
     }
@@ -139,9 +145,9 @@ export default function RegisterPage() {
           </p>
           <div className="space-y-6">
             {[
-              { icon: Sparkles, text: 'AI 智能问答，精准检索知识' },
-              { icon: MessageSquare, text: '多轮对话，深度理解上下文' },
-              { icon: BarChart3, text: '数据看板，洞察知识价值' },
+              { icon: Sparkles, text: "AI 智能问答，精准检索知识" },
+              { icon: MessageSquare, text: "多轮对话，深度理解上下文" },
+              { icon: BarChart3, text: "数据看板，洞察知识价值" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="size-9 bg-white/15 rounded-lg flex items-center justify-center">
@@ -167,35 +173,76 @@ export default function RegisterPage() {
 
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-foreground">创建账号</h2>
-            <p className="text-muted-foreground mt-2">注册后开始使用 AI 知识库</p>
+            <p className="text-muted-foreground mt-2">
+              注册后开始使用 AI 知识库
+            </p>
           </div>
 
-          <Tabs value={tab} onValueChange={(v) => { setTab(v as "email" | "phone"); setError(""); if (v === "phone") refreshCaptcha(); }}>
+          <Tabs
+            value={tab}
+            onValueChange={(v) => {
+              setTab(v as "email" | "phone");
+              setError("");
+              if (v === "phone") refreshCaptcha();
+            }}
+          >
             <TabsList className="w-full mb-6">
-              <TabsTrigger value="email" className="flex-1">邮箱注册</TabsTrigger>
-              <TabsTrigger value="phone" className="flex-1">手机号注册</TabsTrigger>
+              <TabsTrigger value="email" className="flex-1">
+                邮箱注册
+              </TabsTrigger>
+              <TabsTrigger value="phone" className="flex-1">
+                手机号注册
+              </TabsTrigger>
             </TabsList>
 
             {tab === "email" ? (
               <form onSubmit={emailRegister} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">昵称（可选）</Label>
-                  <Input id="name" type="text" placeholder="你的昵称" value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="你的昵称"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-11"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reg-email">邮箱</Label>
-                  <Input id="reg-email" type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11" />
+                  <Input
+                    id="reg-email"
+                    type="email"
+                    required
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reg-password">密码</Label>
-                  <Input id="reg-password" type="password" required minLength={6} placeholder="至少 6 位密码" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} className="h-11" />
+                  <Input
+                    id="reg-password"
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="至少 6 位密码"
+                    value={emailPassword}
+                    onChange={(e) => setEmailPassword(e.target.value)}
+                    className="h-11"
+                  />
                 </div>
                 {error && (
                   <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <Button type="submit" className="w-full h-11" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full h-11"
+                  disabled={loading}
+                >
                   {loading && <Loader2 className="size-4 animate-spin" />}
                   {loading ? "注册中..." : "注册"}
                 </Button>
@@ -210,7 +257,9 @@ export default function RegisterPage() {
                     required
                     maxLength={11}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) =>
+                      setPhone(e.target.value.replace(/\D/g, ""))
+                    }
                     placeholder="输入手机号"
                     className="h-11"
                   />
@@ -232,7 +281,9 @@ export default function RegisterPage() {
                       onClick={refreshCaptcha}
                       className="w-28 h-11 flex items-center justify-center bg-muted rounded-md cursor-pointer overflow-hidden shrink-0"
                       dangerouslySetInnerHTML={{
-                        __html: captchaSvg || '<span class="text-xs text-muted-foreground">点击获取</span>',
+                        __html:
+                          captchaSvg ||
+                          '<span class="text-xs text-muted-foreground">点击获取</span>',
                       }}
                     />
                   </div>
@@ -245,7 +296,9 @@ export default function RegisterPage() {
                       type="text"
                       maxLength={6}
                       value={smsCode}
-                      onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, ""))}
+                      onChange={(e) =>
+                        setSmsCode(e.target.value.replace(/\D/g, ""))
+                      }
                       placeholder="开发阶段可留空"
                       className="flex-1 h-11"
                     />
@@ -256,7 +309,11 @@ export default function RegisterPage() {
                       disabled={sendingSms || countdown > 0}
                       className="w-28 shrink-0 h-11"
                     >
-                      {countdown > 0 ? `${countdown}s` : sendingSms ? "发送中" : "获取验证码"}
+                      {countdown > 0
+                        ? `${countdown}s`
+                        : sendingSms
+                          ? "发送中"
+                          : "获取验证码"}
                     </Button>
                   </div>
                 </div>
@@ -278,7 +335,11 @@ export default function RegisterPage() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <Button type="submit" className="w-full h-11" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full h-11"
+                  disabled={loading}
+                >
                   {loading && <Loader2 className="size-4 animate-spin" />}
                   {loading ? "注册中..." : "注册"}
                 </Button>
@@ -288,7 +349,10 @@ export default function RegisterPage() {
 
           <p className="text-sm text-muted-foreground text-center mt-6">
             已有账号？{" "}
-            <Link href="/login" className="text-primary font-medium hover:underline">
+            <Link
+              href="/login"
+              className="text-primary font-medium hover:underline"
+            >
               登录
             </Link>
           </p>

@@ -7,7 +7,6 @@ export declare class ChatService {
     private vector;
     private knowledge;
     private readonly logger;
-    private readonly llm;
     constructor(prisma: PrismaService, vector: VectorService, knowledge: KnowledgeService);
     createSession(knowledgeBaseId: string, userId: string, title?: string): Promise<{
         id: string;
@@ -63,5 +62,5 @@ export declare class ChatService {
             comment: string | null;
         }[];
     }>;
-    chatStream(sessionId: string, userId: string, question: string, res: Response): Promise<void>;
+    chatStream(sessionId: string, userId: string, question: string, res: Response, model?: string): Promise<void>;
 }

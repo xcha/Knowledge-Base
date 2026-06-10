@@ -5,11 +5,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
 import * as bcrypt from 'bcryptjs';
 import * as svgCaptcha from 'svg-captcha';
-import { randomInt } from 'crypto';
+import { randomInt, randomBytes } from 'crypto';
 
 // 图片验证码内存存储：key=验证码ID, value={text, expiresAt}
 const captchaStore = new Map<string, { text: string; expiresAt: number }>();
@@ -31,22 +32,21 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private sms: SmsService,
+    private config: ConfigService,
   ) {}
 
   // ========== 图片验证码 ==========
-  // 返回 SVG 图片和验证码 ID，前端用 ID 带着答案提交
   generateCaptcha(): { id: string; svg: string } {
     const captcha = svgCaptcha.create({
-      size: 4, // 4位字符
-      noise: 3, // 3条干扰线
-      color: true, // 彩色字符
+      size: 4,
+      noise: 3,
+      color: true,
       background: '#f0f0f0',
       width: 120,
       height: 42,
       fontSize: 48,
     });
 
-    // 生成唯一 ID，存入内存，5分钟过期
     const id = `cap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     captchaStore.set(id, {
       text: captcha.text.toLowerCase(),
@@ -55,22 +55,19 @@ export class AuthService {
     return { id, svg: captcha.data };
   }
 
-  // 验证图片验证码，返回 true/false
   verifyCaptcha(id: string, answer: string): boolean {
     const record = captchaStore.get(id);
     if (!record) return false;
-    captchaStore.delete(id); // 一次性使用
+    captchaStore.delete(id);
     if (record.expiresAt < Date.now()) return false;
     return record.text === answer.toLowerCase().trim();
   }
 
   // ========== 短信验证码 ==========
-  // 生成6位随机码，存入 DB，返回验证码（开发阶段直接返回，生产通过短信发送）
   async sendSmsCode(
     phone: string,
     type: string = 'register',
   ): Promise<{ success: boolean }> {
-    // 60秒内不允许重复发送
     const recent = await this.prisma.smsCode.findFirst({
       where: {
         phone,
@@ -80,7 +77,6 @@ export class AuthService {
     });
     if (recent) throw new BadRequestException('发送过于频繁，请60秒后再试');
 
-    // 生成6位随机数字验证码（使用 crypto 安全随机数）
     const code = String(randomInt(100000, 1000000));
 
     await this.prisma.smsCode.create({
@@ -88,17 +84,14 @@ export class AuthService {
         phone,
         code,
         type,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5分钟有效
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       },
     });
 
-    // 调用短信服务发送验证码
     await this.sms.sendCode(phone, code);
-    console.log('短信已发送');
     return { success: true };
   }
 
-  // 验证短信验证码
   async verifySmsCode(
     phone: string,
     code: string,
@@ -112,12 +105,67 @@ export class AuthService {
     if (!record) return false;
     if (record.expiresAt < new Date()) return false;
 
-    // 标记已使用
     await this.prisma.smsCode.update({
       where: { id: record.id },
       data: { used: true },
     });
     return true;
+  }
+
+  // ========== 双 Token 签发 ==========
+  private async signTokenPair(userId: string, email: string) {
+    const accessToken = this.jwt.sign(
+      { sub: userId, email, type: 'access' },
+      { expiresIn: '15m' },
+    );
+
+    const refreshToken = randomBytes(40).toString('hex');
+    const refreshExpiresIn =
+      this.config.get<string>('JWT_REFRESH_EXPIRES_IN') || '30d';
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + parseInt(refreshExpiresIn));
+
+    await this.prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId,
+        expiresAt,
+      },
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  // ========== 刷新 Token ==========
+  async refresh(refreshToken: string) {
+    const record = await this.prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+    });
+
+    if (!record) throw new UnauthorizedException('无效的刷新令牌');
+    if (record.expiresAt < new Date()) {
+      await this.prisma.refreshToken.delete({ where: { id: record.id } });
+      throw new UnauthorizedException('刷新令牌已过期');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: record.userId },
+    });
+    if (!user) throw new UnauthorizedException('用户不存在');
+
+    // 删除旧的 refresh token（一次性使用）
+    await this.prisma.refreshToken.delete({ where: { id: record.id } });
+
+    // 签发新的 token pair
+    return this.signTokenPair(user.id, user.email);
+  }
+
+  // ========== 登出（清除 refresh token） ==========
+  async logout(refreshToken: string) {
+    await this.prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
+    return { success: true };
   }
 
   // ========== 邮箱注册 ==========
@@ -138,10 +186,11 @@ export class AuthService {
       },
     });
 
-    return { user, token: this.signToken(user.id, user.email) };
+    const tokens = await this.signTokenPair(user.id, user.email);
+    return { user, ...tokens };
   }
 
-  // ========== 手机号注册（短信验证码） ==========
+  // ========== 手机号注册 ==========
   async registerByPhone(
     phone: string,
     smsCode: string | undefined,
@@ -149,20 +198,17 @@ export class AuthService {
     captchaId?: string,
     captchaAnswer?: string,
   ) {
-    // 1. 先验证图片验证码（如果有）
     if (captchaId && captchaAnswer) {
       if (!this.verifyCaptcha(captchaId, captchaAnswer)) {
         throw new BadRequestException('图片验证码错误');
       }
     }
 
-    // 2. 验证短信验证码（开发阶段允许跳过）
     if (smsCode) {
       const smsValid = await this.verifySmsCode(phone, smsCode, 'register');
       if (!smsValid) throw new BadRequestException('短信验证码错误或已过期');
     }
 
-    // 3. 检查手机号是否已注册
     const exists = await this.prisma.user.findUnique({ where: { phone } });
     if (exists) throw new ConflictException('手机号已被注册');
 
@@ -184,7 +230,8 @@ export class AuthService {
       },
     });
 
-    return { user, token: this.signToken(user.id, user.phone ?? user.email) };
+    const tokens = await this.signTokenPair(user.id, user.phone ?? user.email);
+    return { user, ...tokens };
   }
 
   // ========== 登录 ==========
@@ -195,6 +242,7 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new UnauthorizedException('邮箱或密码错误');
 
+    const tokens = await this.signTokenPair(user.id, user.email);
     return {
       user: {
         id: user.id,
@@ -204,11 +252,7 @@ export class AuthService {
         membership: user.membership,
         membershipExpiresAt: user.membershipExpiresAt,
       },
-      token: this.signToken(user.id, user.email),
+      ...tokens,
     };
-  }
-
-  private signToken(userId: string, email: string): string {
-    return this.jwt.sign({ sub: userId, email });
   }
 }

@@ -63,6 +63,14 @@ model SmsCode {
   createdAt DateTime @default(now())
 }
 
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
 model PaymentOrder {
   id            String   @id @default(cuid())
   userId        String
@@ -98,6 +106,7 @@ model Document {
   mimeType          String
   size              Int
   tags              String          @default("")  // 逗号分隔的标签
+  folder            String          @default("/") // 文件夹路径，如 "/技术/前端/"
   version           Int             @default(1)   // 版本号
   parentDocumentId  String?         // 上一版本文档 ID（链式版本追踪）
   knowledgeBaseId   String

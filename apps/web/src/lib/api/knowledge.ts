@@ -1,5 +1,5 @@
 import { get, post, patch, del } from '../request';
-import type { KnowledgeBase, Document, DocVersion, GraphData } from '../types';
+import type { KnowledgeBase, Document, DocVersion, GraphData, FolderNode } from '../types';
 
 export const knowledgeApi = {
   list: () =>
@@ -15,8 +15,13 @@ export const knowledgeApi = {
     del(`/knowledge/${id}`),
 
   // ---- 文档 ----
-  listDocuments: (kbId: string, tag?: string) =>
-    get<Document[]>(`/knowledge/${kbId}/documents${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`),
+  listDocuments: (kbId: string, tag?: string, folder?: string) => {
+    const params = new URLSearchParams();
+    if (tag) params.set('tag', tag);
+    if (folder) params.set('folder', folder);
+    const query = params.toString();
+    return get<Document[]>(`/knowledge/${kbId}/documents${query ? `?${query}` : ''}`);
+  },
 
   uploadDocument: (kbId: string, file: File, tags?: string) => {
     const form = new FormData();
@@ -49,6 +54,13 @@ export const knowledgeApi = {
 
   updateTags: (kbId: string, docId: string, tags: string) =>
     post(`/knowledge/${kbId}/documents/${docId}/tags`, { tags }),
+
+  // ---- 文件夹 ----
+  getFolders: (kbId: string) =>
+    get<FolderNode>(`/knowledge/${kbId}/folders`),
+
+  updateFolder: (kbId: string, docId: string, folder: string) =>
+    patch(`/knowledge/${kbId}/documents/${docId}/folder`, { folder }),
 
   // ---- 搜索 ----
   getGraph: (kbId: string) =>

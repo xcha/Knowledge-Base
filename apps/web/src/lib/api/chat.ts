@@ -1,6 +1,12 @@
 import { get, post, patch, del } from '../request';
 import type { ChatSession, ChatMessage, FeedbackData } from '../types';
 
+export interface ModelInfo {
+  provider: string;
+  model: string;
+  label: string;
+}
+
 export const chatApi = {
   listSessions: (kbId: string) =>
     get<ChatSession[]>(`/knowledge/${kbId}/sessions`),
@@ -16,6 +22,9 @@ export const chatApi = {
 
   getMessages: (kbId: string, sessionId: string) =>
     get<ChatMessage[]>(`/knowledge/${kbId}/sessions/${sessionId}/messages`),
+
+  getModels: (kbId: string) =>
+    get<ModelInfo[]>(`/knowledge/${kbId}/sessions/models`),
 
   feedbackMessage: (kbId: string, sessionId: string, msgId: string, type: 'like' | 'dislike', comment?: string) =>
     post(`/knowledge/${kbId}/sessions/${sessionId}/messages/${msgId}/feedback`, { type, comment }),

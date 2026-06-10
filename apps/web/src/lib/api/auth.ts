@@ -1,16 +1,22 @@
 import { post } from "../request";
 import type { User } from "../types";
 
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+}
+
 export const authApi = {
   register: (email: string, password: string, name?: string) =>
-    post<{ user: User; token: string }>("/auth/register", {
+    post<AuthResponse>("/auth/register", {
       email,
       password,
       name,
     }),
 
   login: (email: string, password: string) =>
-    post<{ user: User; token: string }>("/auth/login", { email, password }),
+    post<AuthResponse>("/auth/login", { email, password }),
 
   getCaptchaUrl: () =>
     `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api"}/auth/captcha?t=${Date.now()}`,
@@ -23,9 +29,17 @@ export const authApi = {
     }),
 
   registerPhone: (phone: string, smsCode: string, password: string) =>
-    post<{ user: User; token: string }>("/auth/register-phone", {
+    post<AuthResponse>("/auth/register-phone", {
       phone,
       smsCode: smsCode || undefined,
       password,
     }),
+
+  refresh: (refreshToken: string) =>
+    post<{ accessToken: string; refreshToken: string }>("/auth/refresh", {
+      refreshToken,
+    }),
+
+  logout: (refreshToken: string) =>
+    post<{ success: boolean }>("/auth/logout", { refreshToken }),
 };

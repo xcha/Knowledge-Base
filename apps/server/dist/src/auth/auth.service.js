@@ -45,6 +45,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
+const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const sms_service_1 = require("../sms/sms.service");
 const bcrypt = __importStar(require("bcryptjs"));
@@ -62,10 +63,12 @@ let AuthService = class AuthService {
     prisma;
     jwt;
     sms;
-    constructor(prisma, jwt, sms) {
+    config;
+    constructor(prisma, jwt, sms, config) {
         this.prisma = prisma;
         this.jwt = jwt;
         this.sms = sms;
+        this.config = config;
     }
     generateCaptcha() {
         const captcha = svgCaptcha.create({
@@ -113,7 +116,6 @@ let AuthService = class AuthService {
             },
         });
         await this.sms.sendCode(phone, code);
-        console.log('短信已发送');
         return { success: true };
     }
     async verifySmsCode(phone, code, type) {
@@ -131,6 +133,45 @@ let AuthService = class AuthService {
         });
         return true;
     }
+    async signTokenPair(userId, email) {
+        const accessToken = this.jwt.sign({ sub: userId, email, type: 'access' }, { expiresIn: '15m' });
+        const refreshToken = (0, crypto_1.randomBytes)(40).toString('hex');
+        const refreshExpiresIn = this.config.get('JWT_REFRESH_EXPIRES_IN') || '30d';
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + parseInt(refreshExpiresIn));
+        await this.prisma.refreshToken.create({
+            data: {
+                token: refreshToken,
+                userId,
+                expiresAt,
+            },
+        });
+        return { accessToken, refreshToken };
+    }
+    async refresh(refreshToken) {
+        const record = await this.prisma.refreshToken.findUnique({
+            where: { token: refreshToken },
+        });
+        if (!record)
+            throw new common_1.UnauthorizedException('无效的刷新令牌');
+        if (record.expiresAt < new Date()) {
+            await this.prisma.refreshToken.delete({ where: { id: record.id } });
+            throw new common_1.UnauthorizedException('刷新令牌已过期');
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { id: record.userId },
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException('用户不存在');
+        await this.prisma.refreshToken.delete({ where: { id: record.id } });
+        return this.signTokenPair(user.id, user.email);
+    }
+    async logout(refreshToken) {
+        await this.prisma.refreshToken.deleteMany({
+            where: { token: refreshToken },
+        });
+        return { success: true };
+    }
     async register(email, password, name) {
         const exists = await this.prisma.user.findUnique({ where: { email } });
         if (exists)
@@ -147,7 +188,8 @@ let AuthService = class AuthService {
                 createdAt: true,
             },
         });
-        return { user, token: this.signToken(user.id, user.email) };
+        const tokens = await this.signTokenPair(user.id, user.email);
+        return { user, ...tokens };
     }
     async registerByPhone(phone, smsCode, password, captchaId, captchaAnswer) {
         if (captchaId && captchaAnswer) {
@@ -180,7 +222,8 @@ let AuthService = class AuthService {
                 createdAt: true,
             },
         });
-        return { user, token: this.signToken(user.id, user.phone ?? user.email) };
+        const tokens = await this.signTokenPair(user.id, user.phone ?? user.email);
+        return { user, ...tokens };
     }
     async login(email, password) {
         const user = await this.prisma.user.findUnique({ where: { email } });
@@ -189,6 +232,7 @@ let AuthService = class AuthService {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid)
             throw new common_1.UnauthorizedException('邮箱或密码错误');
+        const tokens = await this.signTokenPair(user.id, user.email);
         return {
             user: {
                 id: user.id,
@@ -198,11 +242,8 @@ let AuthService = class AuthService {
                 membership: user.membership,
                 membershipExpiresAt: user.membershipExpiresAt,
             },
-            token: this.signToken(user.id, user.email),
+            ...tokens,
         };
-    }
-    signToken(userId, email) {
-        return this.jwt.sign({ sub: userId, email });
     }
 };
 exports.AuthService = AuthService;
@@ -210,6 +251,7 @@ exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         jwt_1.JwtService,
-        sms_service_1.SmsService])
+        sms_service_1.SmsService,
+        config_1.ConfigService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

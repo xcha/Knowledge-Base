@@ -4,6 +4,12 @@ import { VectorService } from '../vector/vector.service';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { VoyageEmbeddings } from '@langchain/community/embeddings/voyage';
 
+export interface FolderNode {
+  name: string;
+  path: string;
+  children: FolderNode[];
+}
+
 @Injectable()
 export class KnowledgeService {
   constructor(
@@ -166,8 +172,8 @@ export class KnowledgeService {
     return this.embedder.embedQuery(text);
   }
 
-  // ---- 文档列表（支持标签筛选）----
-  async listDocuments(knowledgeBaseId: string, userId: string, tag?: string) {
+  // ---- 文档列表（支持标签筛选 + 文件夹筛选）----
+  async listDocuments(knowledgeBaseId: string, userId: string, tag?: string, folder?: string) {
     await this.checkKbAccess(knowledgeBaseId, userId);
 
     const where: any = { knowledgeBaseId };
@@ -175,11 +181,78 @@ export class KnowledgeService {
     if (tag) {
       where.tags = { contains: tag };
     }
+    // 文件夹筛选
+    if (folder) {
+      where.folder = folder;
+    }
 
     return this.prisma.document.findMany({
       where,
       include: { _count: { select: { chunks: true } } },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ---- 获取知识库所有文件夹（树形结构）----
+  async getAllFolders(knowledgeBaseId: string, userId: string) {
+    await this.checkKbAccess(knowledgeBaseId, userId);
+
+    const docs = await this.prisma.document.findMany({
+      where: { knowledgeBaseId },
+      select: { folder: true },
+    });
+
+    // 提取所有唯一的文件夹路径
+    const folderSet = new Set<string>();
+    docs.forEach((d) => {
+      if (d.folder) folderSet.add(d.folder);
+    });
+
+    // 构建树形结构
+    const root: FolderNode = { name: '/', path: '/', children: [] };
+    const nodeMap = new Map<string, FolderNode>();
+    nodeMap.set('/', root);
+
+    const sortedFolders = Array.from(folderSet).sort();
+    for (const folder of sortedFolders) {
+      const parts = folder.split('/').filter(Boolean);
+      let currentPath = '/';
+      let parentNode = root;
+
+      for (const part of parts) {
+        const parentPath = currentPath;
+        currentPath = currentPath === '/' ? `/${part}/` : `${currentPath}${part}/`;
+
+        if (!nodeMap.has(currentPath)) {
+          const newNode: FolderNode = { name: part, path: currentPath, children: [] };
+          nodeMap.set(currentPath, newNode);
+          parentNode.children.push(newNode);
+        }
+        parentNode = nodeMap.get(currentPath)!;
+      }
+    }
+
+    return root;
+  }
+
+  // ---- 更新文档文件夹 ----
+  async updateDocumentFolder(documentId: string, userId: string, folder: string) {
+    const doc = await this.prisma.document.findFirst({
+      where: { id: documentId },
+      include: { knowledgeBase: true },
+    });
+    if (!doc) throw new NotFoundException('文档不存在');
+    await this.checkKbAccess(doc.knowledgeBaseId, userId);
+
+    // 规范化文件夹路径
+    let normalizedFolder = folder.trim();
+    if (!normalizedFolder.startsWith('/')) normalizedFolder = '/' + normalizedFolder;
+    if (!normalizedFolder.endsWith('/')) normalizedFolder = normalizedFolder + '/';
+    if (normalizedFolder === '//') normalizedFolder = '/';
+
+    return this.prisma.document.update({
+      where: { id: documentId },
+      data: { folder: normalizedFolder },
     });
   }
 

@@ -5,6 +5,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SendSmsDto } from './dto/send-sms.dto';
 import { RegisterPhoneDto } from './dto/register-phone.dto';
+import { RefreshDto } from './dto/refresh.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -48,5 +49,15 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.email, dto.password);
+  }
+
+  @Post('refresh')
+  refresh(@Body() dto: RefreshDto) {
+    return this.auth.refresh(dto.refreshToken);
+  }
+
+  @Post('logout')
+  logout(@Body() dto: RefreshDto) {
+    return this.auth.logout(dto.refreshToken);
   }
 }

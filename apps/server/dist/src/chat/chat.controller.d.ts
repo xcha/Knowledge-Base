@@ -6,6 +6,7 @@ import { SendMessageDto } from './dto/send-message.dto';
 export declare class ChatController {
     private chatService;
     constructor(chatService: ChatService);
+    getModels(): import("../common/llm.provider").ModelConfig[];
     createSession(kbId: string, req: AuthRequest, dto: CreateSessionDto): Promise<{
         id: string;
         createdAt: Date;

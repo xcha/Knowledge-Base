@@ -4,6 +4,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SendSmsDto } from './dto/send-sms.dto';
 import { RegisterPhoneDto } from './dto/register-phone.dto';
+import { RefreshDto } from './dto/refresh.dto';
 export declare class AuthController {
     private auth;
     constructor(auth: AuthService);
@@ -15,6 +16,8 @@ export declare class AuthController {
         message: string;
     }>;
     register(dto: RegisterDto): Promise<{
+        accessToken: string;
+        refreshToken: string;
         user: {
             id: string;
             phone: string | null;
@@ -23,9 +26,10 @@ export declare class AuthController {
             email: string;
             membership: string;
         };
-        token: string;
     }>;
     registerPhone(dto: RegisterPhoneDto): Promise<{
+        accessToken: string;
+        refreshToken: string;
         user: {
             id: string;
             phone: string | null;
@@ -34,9 +38,10 @@ export declare class AuthController {
             email: string;
             membership: string;
         };
-        token: string;
     }>;
     login(dto: LoginDto): Promise<{
+        accessToken: string;
+        refreshToken: string;
         user: {
             id: string;
             email: string;
@@ -45,6 +50,12 @@ export declare class AuthController {
             membership: string;
             membershipExpiresAt: Date | null;
         };
-        token: string;
+    }>;
+    refresh(dto: RefreshDto): Promise<{
+        accessToken: string;
+        refreshToken: string;
+    }>;
+    logout(dto: RefreshDto): Promise<{
+        success: boolean;
     }>;
 }

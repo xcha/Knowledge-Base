@@ -19,6 +19,7 @@ const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
 const send_sms_dto_1 = require("./dto/send-sms.dto");
 const register_phone_dto_1 = require("./dto/register-phone.dto");
+const refresh_dto_1 = require("./dto/refresh.dto");
 let AuthController = class AuthController {
     auth;
     constructor(auth) {
@@ -47,6 +48,12 @@ let AuthController = class AuthController {
     }
     login(dto) {
         return this.auth.login(dto.email, dto.password);
+    }
+    refresh(dto) {
+        return this.auth.refresh(dto.refreshToken);
+    }
+    logout(dto) {
+        return this.auth.logout(dto.refreshToken);
     }
 };
 exports.AuthController = AuthController;
@@ -85,6 +92,20 @@ __decorate([
     __metadata("design:paramtypes", [login_dto_1.LoginDto]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.Post)('refresh'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [refresh_dto_1.RefreshDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "refresh", null);
+__decorate([
+    (0, common_1.Post)('logout'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [refresh_dto_1.RefreshDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "logout", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

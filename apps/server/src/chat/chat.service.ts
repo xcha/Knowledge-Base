@@ -4,12 +4,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
-import { createClaudeLlm, setupSseHeaders, sendSse } from '../common/llm.provider';
+import { createLlm, setupSseHeaders, sendSse } from '../common/llm.provider';
 
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
-  private readonly llm = createClaudeLlm();
 
   constructor(
     private prisma: PrismaService,
@@ -93,6 +92,7 @@ export class ChatService {
     userId: string,
     question: string,
     res: Response,
+    model?: string,
   ) {
     const session = await this.prisma.chatSession.findFirst({
       where: { id: sessionId },
@@ -149,10 +149,11 @@ ${context}`,
     // 6. 设置 SSE 响应头
     setupSseHeaders(res);
 
-    // 7. 流式调用 Claude，逐 token 推送给前端
+    // 7. 流式调用 LLM，逐 token 推送给前端
+    const llm = createLlm(model);
     let fullContent = '';
     try {
-      const stream = await this.llm.stream(messages);
+      const stream = await llm.stream(messages);
       for await (const chunk of stream) {
         const text = chunk.content as string;
         if (text) {
