@@ -1,9 +1,16 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { LoggingInterceptor } from './common/logging.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // 使用 nest 的 logger，确保输出可见
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
+
+  // 全局请求日志
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
   // CORS：支持通过环境变量配置，多个源用逗号分隔
   const corsOrigins = process.env.CORS_ORIGINS
@@ -23,6 +30,6 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
-  console.log(`Server running on http://localhost:${port}/api`);
+  Logger.log(`Server running on http://localhost:${port}/api`, 'Bootstrap');
 }
 bootstrap();

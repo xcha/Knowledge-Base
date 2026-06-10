@@ -9,7 +9,7 @@ export const paymentApi = {
     get<Record<string, { maxKnowledgeBases: number; maxDocuments: number }>>('/payment/quotas'),
 
   createOrder: (membership: string, durationMonths: number) =>
-    post<{ orderId: string; outTradeNo: string; subject: string; totalAmount: string }>(
+    post<{ orderId: string; outTradeNo: string; subject: string; totalAmount: string; payUrl?: string }>(
       '/payment/orders', { membership, durationMonths },
     ),
 

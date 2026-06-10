@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { SmsService } from '../sms/sms.service';
 import * as bcrypt from 'bcryptjs';
 import * as svgCaptcha from 'svg-captcha';
 import { randomInt } from 'crypto';
@@ -29,6 +30,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private sms: SmsService,
   ) {}
 
   // ========== 图片验证码 ==========
@@ -50,7 +52,6 @@ export class AuthService {
       text: captcha.text.toLowerCase(),
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
-
     return { id, svg: captcha.data };
   }
 
@@ -91,11 +92,9 @@ export class AuthService {
       },
     });
 
-    // TODO: 生产环境接入阿里云短信发送
-    // await this.sendViaAlibabaSms(phone, code);
-
-    // 开发阶段日志输出验证码，方便调试
-    console.log(`[SMS] 手机号 ${phone} 验证码: ${code}`);
+    // 调用短信服务发送验证码
+    await this.sms.sendCode(phone, code);
+    console.log('短信已发送');
     return { success: true };
   }
 
@@ -145,7 +144,7 @@ export class AuthService {
   // ========== 手机号注册（短信验证码） ==========
   async registerByPhone(
     phone: string,
-    smsCode: string,
+    smsCode: string | undefined,
     password: string,
     captchaId?: string,
     captchaAnswer?: string,
@@ -157,9 +156,11 @@ export class AuthService {
       }
     }
 
-    // 2. 验证短信验证码
-    const smsValid = await this.verifySmsCode(phone, smsCode, 'register');
-    if (!smsValid) throw new BadRequestException('短信验证码错误或已过期');
+    // 2. 验证短信验证码（开发阶段允许跳过）
+    if (smsCode) {
+      const smsValid = await this.verifySmsCode(phone, smsCode, 'register');
+      if (!smsValid) throw new BadRequestException('短信验证码错误或已过期');
+    }
 
     // 3. 检查手机号是否已注册
     const exists = await this.prisma.user.findUnique({ where: { phone } });

@@ -43,7 +43,16 @@ export default function MembershipPage() {
     setResult('');
     try {
       const orderRes = await paymentApi.createOrder(selectedPlan, selectedDuration);
-      const { outTradeNo, totalAmount } = orderRes.data;
+      const { outTradeNo, totalAmount, payUrl } = orderRes.data;
+
+      // 如果有支付宝支付链接，跳转到支付宝
+      if (payUrl) {
+        setResult(`订单创建成功，正在跳转支付宝...`);
+        window.location.href = payUrl;
+        return;
+      }
+
+      // 沙箱模拟：直接回调
       setResult(`订单创建成功：${outTradeNo}，金额 ¥${totalAmount}`);
       await new Promise((r) => setTimeout(r, 1000));
       const cbRes = await paymentApi.handleCallback(outTradeNo);

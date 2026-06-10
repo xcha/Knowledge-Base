@@ -11,6 +11,7 @@ import { AgentModule } from './agent/agent.module';
 import { PaymentModule } from './payment/payment.module';
 import { UserModule } from './user/user.module';
 import { TeamModule } from './team/team.module';
+import { SmsModule } from './sms/sms.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TeamModule } from './team/team.module';
     PaymentModule,
     UserModule,
     TeamModule,
+    SmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

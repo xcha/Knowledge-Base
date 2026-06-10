@@ -4,8 +4,9 @@ export class RegisterPhoneDto {
   @IsString()
   phone: string;
 
+  @IsOptional()
   @IsString()
-  smsCode: string;
+  smsCode?: string;
 
   @IsString()
   @MinLength(6, { message: '密码至少6位' })

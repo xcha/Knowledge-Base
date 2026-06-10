@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { User } from './api';
 
 interface AuthState {
@@ -18,30 +18,36 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
-      setAuth: (user, token) => {
-        localStorage.setItem('token', token);
-        set({ user, token });
-      },
-      logout: () => {
-        localStorage.removeItem('token');
-        set({ user: null, token: null });
-      },
+      setAuth: (user, token) => set({ user, token }),
+      logout: () => set({ user: null, token: null }),
     }),
     { name: 'auth-storage', partialize: (s) => ({ user: s.user, token: s.token }) },
   ),
 );
 
-/** 等待 zustand persist 从 localStorage 水合完毕后再渲染子组件 */
-export function useHydrated() {
-  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
-  useEffect(() => {
-    const unsub = useAuthStore.persist.onHydrate(() => setHydrated(false));
-    const unsubFinish = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
-    // 如果还没水合完，手动触发一次
-    if (!useAuthStore.persist.hasHydrated()) {
-      useAuthStore.persist.rehydrate();
-    }
-    return () => { unsub(); unsubFinish(); };
-  }, []);
+// 水合状态：SSR 时为 false，客户端挂载后为 true
+let hydrated = false;
+const hydrateCallbacks = new Set<() => void>();
+
+function onHydrate(cb: () => void) {
+  hydrateCallbacks.add(cb);
+  return () => hydrateCallbacks.delete(cb);
+}
+
+function getSnapshot() {
   return hydrated;
+}
+
+// 客户端挂载时标记为已水合
+if (typeof window !== 'undefined') {
+  // persist 是同步恢复的，下一个 microtask 就能拿到数据
+  queueMicrotask(() => {
+    hydrated = true;
+    hydrateCallbacks.forEach((cb) => cb());
+  });
+}
+
+/** 等待客户端挂载 + zustand persist 水合完毕 */
+export function useHydrated() {
+  return useSyncExternalStore(onHydrate, getSnapshot, () => false);
 }

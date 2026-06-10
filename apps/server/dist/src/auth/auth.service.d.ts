@@ -1,9 +1,11 @@
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { SmsService } from '../sms/sms.service';
 export declare class AuthService {
     private prisma;
     private jwt;
-    constructor(prisma: PrismaService, jwt: JwtService);
+    private sms;
+    constructor(prisma: PrismaService, jwt: JwtService, sms: SmsService);
     generateCaptcha(): {
         id: string;
         svg: string;
@@ -24,7 +26,7 @@ export declare class AuthService {
         };
         token: string;
     }>;
-    registerByPhone(phone: string, smsCode: string, password: string, captchaId?: string, captchaAnswer?: string): Promise<{
+    registerByPhone(phone: string, smsCode: string | undefined, password: string, captchaId?: string, captchaAnswer?: string): Promise<{
         user: {
             id: string;
             phone: string | null;

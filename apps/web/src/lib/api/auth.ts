@@ -25,7 +25,7 @@ export const authApi = {
   registerPhone: (phone: string, smsCode: string, password: string) =>
     post<{ user: User; token: string }>("/auth/register-phone", {
       phone,
-      smsCode,
+      smsCode: smsCode || undefined,
       password,
     }),
 };

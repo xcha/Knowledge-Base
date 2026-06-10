@@ -50,15 +50,15 @@ export default function RegisterPage() {
   }
 
   async function handleSendSms() {
-    if (!captchaId) {
-      await refreshCaptcha();
+    if (countdown > 0 || sendingSms) return;
+    if (!phone) {
+      setError("请输入手机号");
       return;
     }
-    if (!captchaInput || !phone) {
-      setError("请输入手机号和图片验证码");
+    if (!captchaId || !captchaInput) {
+      setError("请输入图片验证码");
       return;
     }
-    if (countdown > 0) return;
 
     setSendingSms(true);
     setError("");
@@ -77,11 +77,9 @@ export default function RegisterPage() {
         }, 1000);
       } else {
         setError(res.data.message ?? "发送失败");
-        refreshCaptcha();
       }
     } catch (err: unknown) {
       setError(getErrorMessage(err, '发送失败'));
-      refreshCaptcha();
     } finally {
       setSendingSms(false);
     }
@@ -105,8 +103,8 @@ export default function RegisterPage() {
   async function phoneRegister(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!smsCode) {
-      setError("请输入短信验证码");
+    if (!phone) {
+      setError("请输入手机号");
       return;
     }
     setLoading(true);
@@ -240,16 +238,15 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sms-code">短信验证码</Label>
+                  <Label htmlFor="sms-code">短信验证码（可选）</Label>
                   <div className="flex gap-2">
                     <Input
                       id="sms-code"
                       type="text"
                       maxLength={6}
-                      required
                       value={smsCode}
                       onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, ""))}
-                      placeholder="输入短信验证码"
+                      placeholder="开发阶段可留空"
                       className="flex-1 h-11"
                     />
                     <Button

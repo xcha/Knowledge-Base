@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AlipaySdk } from 'alipay-sdk';
 
 // 会员价格配置（单位：元）
 const PRICE_CONFIG = {
@@ -16,7 +17,27 @@ const QUOTA_CONFIG = {
 
 @Injectable()
 export class PaymentService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(PaymentService.name);
+  private alipaySdk: AlipaySdk | null = null;
+
+  constructor(private prisma: PrismaService) {
+    const appId = process.env.ALIPAY_APP_ID;
+    const privateKey = process.env.ALIPAY_PRIVATE_KEY;
+    const publicKey = process.env.ALIPAY_PUBLIC_KEY;
+
+    if (appId && privateKey && publicKey) {
+      this.alipaySdk = new AlipaySdk({
+        appId,
+        privateKey,
+        alipayPublicKey: publicKey,
+        gateway: process.env.ALIPAY_GATEWAY || 'https://openapi-sandbox.dl.alipaydev.com/gateway.do',
+        signType: 'RSA2',
+      });
+      this.logger.log('支付宝沙箱已初始化');
+    } else {
+      this.logger.warn('未配置支付宝密钥，将使用模拟支付');
+    }
+  }
 
   /** 获取价格列表 */
   getPriceList() {
@@ -58,24 +79,45 @@ export class PaymentService {
       },
     });
 
+    // 如果配置了支付宝，生成支付链接
+    let payUrl: string | undefined;
+    if (this.alipaySdk) {
+      try {
+        const result = await this.alipaySdk.exec('alipay.trade.page.pay', {
+          bizContent: {
+            out_trade_no: outTradeNo,
+            total_amount: totalAmount,
+            subject: order.subject,
+            product_code: 'FAST_INSTANT_TRADE_PAY',
+          },
+          returnUrl: process.env.ALIPAY_RETURN_URL || 'http://localhost:3000/dashboard/membership',
+        });
+        // exec 返回的是 AlipaySdkCommonResult，其中 body 包含支付表单 HTML
+        payUrl = (result as Record<string, unknown>).body as string || undefined;
+      } catch (err) {
+        this.logger.error('生成支付宝链接失败', err);
+      }
+    }
+
     return {
       orderId: order.id,
       outTradeNo: order.outTradeNo,
       subject: order.subject,
       totalAmount: order.totalAmount,
+      payUrl,
     };
   }
 
   /**
    * 支付成功回调：更新订单状态 + 延长会员
-   * 如果是沙箱模拟支付，前端可直接调此接口
+   * 支付宝异步通知调用此方法
    */
-  async handlePaymentSuccess(outTradeNo: string, userId: string) {
+  async handlePaymentSuccess(outTradeNo: string, userId?: string) {
     const order = await this.prisma.paymentOrder.findUnique({
       where: { outTradeNo },
     });
     if (!order) throw new BadRequestException('订单不存在');
-    if (order.userId !== userId) throw new ForbiddenException('无权操作此订单');
+    if (userId && order.userId !== userId) throw new ForbiddenException('无权操作此订单');
     if (order.status === 'paid') return { success: true, message: '订单已支付' };
 
     // 1. 更新订单状态

@@ -46,6 +46,7 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../prisma/prisma.service");
+const sms_service_1 = require("../sms/sms.service");
 const bcrypt = __importStar(require("bcryptjs"));
 const svgCaptcha = __importStar(require("svg-captcha"));
 const crypto_1 = require("crypto");
@@ -60,9 +61,11 @@ setInterval(() => {
 let AuthService = class AuthService {
     prisma;
     jwt;
-    constructor(prisma, jwt) {
+    sms;
+    constructor(prisma, jwt, sms) {
         this.prisma = prisma;
         this.jwt = jwt;
+        this.sms = sms;
     }
     generateCaptcha() {
         const captcha = svgCaptcha.create({
@@ -109,7 +112,8 @@ let AuthService = class AuthService {
                 expiresAt: new Date(Date.now() + 5 * 60 * 1000),
             },
         });
-        console.log(`[SMS] 手机号 ${phone} 验证码: ${code}`);
+        await this.sms.sendCode(phone, code);
+        console.log('短信已发送');
         return { success: true };
     }
     async verifySmsCode(phone, code, type) {
@@ -151,9 +155,11 @@ let AuthService = class AuthService {
                 throw new common_1.BadRequestException('图片验证码错误');
             }
         }
-        const smsValid = await this.verifySmsCode(phone, smsCode, 'register');
-        if (!smsValid)
-            throw new common_1.BadRequestException('短信验证码错误或已过期');
+        if (smsCode) {
+            const smsValid = await this.verifySmsCode(phone, smsCode, 'register');
+            if (!smsValid)
+                throw new common_1.BadRequestException('短信验证码错误或已过期');
+        }
         const exists = await this.prisma.user.findUnique({ where: { phone } });
         if (exists)
             throw new common_1.ConflictException('手机号已被注册');
@@ -203,6 +209,7 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        sms_service_1.SmsService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map
