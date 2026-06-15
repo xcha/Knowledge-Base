@@ -20,13 +20,16 @@ const knowledge_service_1 = require("./knowledge.service");
 const create_kb_dto_1 = require("./dto/create-kb.dto");
 const { PDFParse } = require('pdf-parse');
 async function extractText(file) {
-    if (file.mimetype === 'application/pdf' || file.originalname.endsWith('.pdf')) {
+    if (file.mimetype === 'application/pdf' ||
+        file.originalname.endsWith('.pdf')) {
         const pdf = new PDFParse(new Uint8Array(file.buffer));
         const result = await pdf.getText();
         return result.text;
     }
-    if (file.mimetype === 'text/plain' || file.mimetype === 'text/markdown' ||
-        file.originalname.endsWith('.md') || file.originalname.endsWith('.txt')) {
+    if (file.mimetype === 'text/plain' ||
+        file.mimetype === 'text/markdown' ||
+        file.originalname.endsWith('.md') ||
+        file.originalname.endsWith('.txt')) {
         return file.buffer.toString('utf-8');
     }
     throw new Error(`暂不支持的文件类型: ${file.mimetype}`);
@@ -70,6 +73,9 @@ let KnowledgeController = class KnowledgeController {
     }
     getDocumentContent(docId, req) {
         return this.knowledge.getDocumentContent(docId, req.user.id);
+    }
+    getSuggestedQuestions(knowledgeBaseId, req) {
+        return this.knowledge.getSuggestedQuestions(knowledgeBaseId, req.user.id);
     }
     getTags(knowledgeBaseId, req) {
         return this.knowledge.getAllTags(knowledgeBaseId, req.user.id);
@@ -190,6 +196,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], KnowledgeController.prototype, "getDocumentContent", null);
+__decorate([
+    (0, common_1.Get)(':id/suggested-questions'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], KnowledgeController.prototype, "getSuggestedQuestions", null);
 __decorate([
     (0, common_1.Get)(':id/tags'),
     __param(0, (0, common_1.Param)('id')),

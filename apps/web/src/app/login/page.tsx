@@ -1,36 +1,42 @@
-'use client';
+"use client";
 
 import { getErrorMessage } from "@/lib/error";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { authApi } from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, BookOpen, Sparkles, MessageSquare, BarChart3 } from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { authApi } from "@/lib/api";
+import { useAuthStore } from "@/lib/store";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Loader2,
+  BookOpen,
+  Sparkles,
+  MessageSquare,
+  BarChart3,
+  Users,
+} from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       const res = await authApi.login(email, password);
       setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
-      router.push('/dashboard');
+      router.push("/dashboard");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, '登录失败'));
+      setError(getErrorMessage(err, "登录失败"));
     } finally {
       setLoading(false);
     }
@@ -56,9 +62,10 @@ export default function LoginPage() {
           </p>
           <div className="space-y-6">
             {[
-              { icon: Sparkles, text: 'AI 智能问答，精准检索知识' },
-              { icon: MessageSquare, text: '多轮对话，深度理解上下文' },
-              { icon: BarChart3, text: '数据看板，洞察知识价值' },
+              { icon: Sparkles, text: "AI 智能问答，精准检索知识" },
+              { icon: MessageSquare, text: "多轮对话，深度理解上下文" },
+              { icon: BarChart3, text: "数据看板，洞察知识价值" },
+              { icon: Users, text: "多人协作，团队赋能" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="size-9 bg-white/15 rounded-lg flex items-center justify-center">
@@ -121,13 +128,16 @@ export default function LoginPage() {
             )}
             <Button type="submit" className="w-full h-11" disabled={loading}>
               {loading && <Loader2 className="size-4 animate-spin" />}
-              {loading ? '登录中...' : '登录'}
+              {loading ? "登录中..." : "登录"}
             </Button>
           </form>
 
           <p className="text-sm text-muted-foreground text-center mt-6">
-            没有账号？{' '}
-            <Link href="/register" className="text-primary font-medium hover:underline">
+            没有账号？{" "}
+            <Link
+              href="/register"
+              className="text-primary font-medium hover:underline"
+            >
               注册
             </Link>
           </p>

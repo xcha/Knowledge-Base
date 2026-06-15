@@ -6,12 +6,12 @@ export declare class KnowledgeController {
     constructor(knowledge: KnowledgeService);
     create(req: AuthRequest, dto: CreateKbDto): Promise<{
         id: string;
-        createdAt: Date;
         name: string;
-        userId: string;
-        updatedAt: Date;
         description: string | null;
+        userId: string;
         teamId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     list(req: AuthRequest): Promise<({
         team: {
@@ -23,24 +23,24 @@ export declare class KnowledgeController {
         };
     } & {
         id: string;
-        createdAt: Date;
         name: string;
-        userId: string;
-        updatedAt: Date;
         description: string | null;
+        userId: string;
         teamId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     })[]>;
     updateKb(id: string, req: AuthRequest, body: {
         name?: string;
         description?: string;
     }): Promise<{
         id: string;
-        createdAt: Date;
         name: string;
-        userId: string;
-        updatedAt: Date;
         description: string | null;
+        userId: string;
         teamId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     deleteKb(id: string, req: AuthRequest): Promise<void>;
     uploadDocument(knowledgeBaseId: string, req: AuthRequest, file: Express.Multer.File, tags?: string): Promise<{
@@ -53,12 +53,12 @@ export declare class KnowledgeController {
             chunks: number;
         };
     } & {
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -69,12 +69,12 @@ export declare class KnowledgeController {
     renameDocument(docId: string, req: AuthRequest, body: {
         originalName: string;
     }): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -84,12 +84,12 @@ export declare class KnowledgeController {
     updateFolder(docId: string, req: AuthRequest, body: {
         folder: string;
     }): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -108,16 +108,19 @@ export declare class KnowledgeController {
         content: string;
         chunkCount: number;
     }>;
+    getSuggestedQuestions(knowledgeBaseId: string, req: AuthRequest): Promise<{
+        questions: string[];
+    }>;
     getTags(knowledgeBaseId: string, req: AuthRequest): Promise<string[]>;
     updateTags(docId: string, req: AuthRequest, body: {
         tags: string;
     }): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -143,13 +146,13 @@ export declare class KnowledgeController {
         }[];
     }>;
     getVersions(docId: string, req: AuthRequest): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         _count: {
             chunks: number;
         };
         originalName: string;
+        size: number;
         version: number;
     }[]>;
     getGraph(knowledgeBaseId: string, req: AuthRequest): Promise<{

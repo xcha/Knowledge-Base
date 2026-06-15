@@ -48,9 +48,9 @@ export declare class ChatController {
         comment?: string;
     }): Promise<{
         id: string;
-        type: string;
-        createdAt: Date;
         userId: string;
+        createdAt: Date;
+        type: string;
         messageId: string;
         comment: string | null;
     }>;
@@ -60,9 +60,9 @@ export declare class ChatController {
         total: number;
         list: {
             id: string;
-            type: string;
-            createdAt: Date;
             userId: string;
+            createdAt: Date;
+            type: string;
             messageId: string;
             comment: string | null;
         }[];

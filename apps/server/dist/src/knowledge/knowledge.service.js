@@ -52,12 +52,16 @@ let KnowledgeService = class KnowledgeService {
     async createKnowledgeBase(userId, name, description) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (user) {
-            const count = await this.prisma.knowledgeBase.count({ where: { userId } });
+            const count = await this.prisma.knowledgeBase.count({
+                where: { userId },
+            });
             if (count >= user.maxKnowledgeBases) {
                 throw new common_1.BadRequestException(`知识库数量已达上限（${user.maxKnowledgeBases}个），请升级会员或删除旧知识库`);
             }
         }
-        return this.prisma.knowledgeBase.create({ data: { name, description, userId } });
+        return this.prisma.knowledgeBase.create({
+            data: { name, description, userId },
+        });
     }
     async listKnowledgeBases(userId) {
         const teamMemberOf = await this.prisma.teamMember.findMany({
@@ -80,7 +84,9 @@ let KnowledgeService = class KnowledgeService {
         });
     }
     async renameKnowledgeBase(id, userId, name) {
-        const kb = await this.prisma.knowledgeBase.findFirst({ where: { id, userId } });
+        const kb = await this.prisma.knowledgeBase.findFirst({
+            where: { id, userId },
+        });
         if (!kb)
             throw new common_1.NotFoundException('知识库不存在');
         return this.prisma.knowledgeBase.update({ where: { id }, data: { name } });
@@ -94,7 +100,9 @@ let KnowledgeService = class KnowledgeService {
         return this.prisma.knowledgeBase.update({ where: { id }, data });
     }
     async deleteKnowledgeBase(id, userId) {
-        const kb = await this.prisma.knowledgeBase.findFirst({ where: { id, userId } });
+        const kb = await this.prisma.knowledgeBase.findFirst({
+            where: { id, userId },
+        });
         if (!kb)
             throw new common_1.NotFoundException('知识库不存在');
         await this.vector.deleteCollection(`kb_${id}`).catch(() => null);
@@ -116,7 +124,9 @@ let KnowledgeService = class KnowledgeService {
             orderBy: { version: 'desc' },
         });
         const version = existing ? existing.version + 1 : 1;
-        const parentId = existing ? (existing.parentDocumentId ?? existing.id) : undefined;
+        const parentId = existing
+            ? (existing.parentDocumentId ?? existing.id)
+            : undefined;
         const doc = await this.prisma.document.create({
             data: {
                 filename: file.filename ?? file.originalname,
@@ -138,12 +148,17 @@ let KnowledgeService = class KnowledgeService {
         const embeddings = await this.embedder.embedDocuments(chunks);
         const ids = chunks.map((_, i) => `${documentId}_chunk_${i}`);
         const metadatas = chunks.map((_, i) => ({
-            documentId, knowledgeBaseId, chunkIndex: String(i),
+            documentId,
+            knowledgeBaseId,
+            chunkIndex: String(i),
         }));
         await this.vector.addDocuments(collectionName, ids, embeddings, chunks, metadatas);
         await this.prisma.documentChunk.createMany({
             data: chunks.map((content, i) => ({
-                content, vectorId: ids[i], chunkIndex: i, documentId,
+                content,
+                vectorId: ids[i],
+                chunkIndex: i,
+                documentId,
             })),
         });
     }
@@ -186,9 +201,14 @@ let KnowledgeService = class KnowledgeService {
             let parentNode = root;
             for (const part of parts) {
                 const parentPath = currentPath;
-                currentPath = currentPath === '/' ? `/${part}/` : `${currentPath}${part}/`;
+                currentPath =
+                    currentPath === '/' ? `/${part}/` : `${currentPath}${part}/`;
                 if (!nodeMap.has(currentPath)) {
-                    const newNode = { name: part, path: currentPath, children: [] };
+                    const newNode = {
+                        name: part,
+                        path: currentPath,
+                        children: [],
+                    };
                     nodeMap.set(currentPath, newNode);
                     parentNode.children.push(newNode);
                 }
@@ -321,7 +341,10 @@ let KnowledgeService = class KnowledgeService {
     async getDocumentContent(documentId, userId) {
         const doc = await this.prisma.document.findFirst({
             where: { id: documentId },
-            include: { chunks: { orderBy: { chunkIndex: 'asc' } }, knowledgeBase: true },
+            include: {
+                chunks: { orderBy: { chunkIndex: 'asc' } },
+                knowledgeBase: true,
+            },
         });
         if (!doc)
             throw new common_1.NotFoundException('文档不存在');
@@ -349,7 +372,10 @@ let KnowledgeService = class KnowledgeService {
                 OR: [{ id: rootId }, { parentDocumentId: rootId }],
             },
             select: {
-                id: true, originalName: true, version: true, size: true,
+                id: true,
+                originalName: true,
+                version: true,
+                size: true,
                 _count: { select: { chunks: true } },
                 createdAt: true,
             },
@@ -371,18 +397,30 @@ let KnowledgeService = class KnowledgeService {
         });
         const nodes = docs.slice(0, 20).map((d) => ({
             id: d.id,
-            name: d.originalName.length > 20 ? d.originalName.slice(0, 20) + '...' : d.originalName,
+            name: d.originalName.length > 20
+                ? d.originalName.slice(0, 20) + '...'
+                : d.originalName,
             symbolSize: Math.min(40, 20 + (d.tags?.split(',').filter(Boolean).length ?? 0) * 8),
             tags: d.tags,
         }));
         const links = [];
         for (let i = 0; i < nodes.length; i++) {
-            const tagsI = (nodes[i].tags ?? '').split(',').map((t) => t.trim()).filter(Boolean);
+            const tagsI = (nodes[i].tags ?? '')
+                .split(',')
+                .map((t) => t.trim())
+                .filter(Boolean);
             for (let j = i + 1; j < nodes.length; j++) {
-                const tagsJ = (nodes[j].tags ?? '').split(',').map((t) => t.trim()).filter(Boolean);
+                const tagsJ = (nodes[j].tags ?? '')
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean);
                 const common = tagsI.filter((t) => tagsJ.includes(t));
                 if (common.length > 0) {
-                    links.push({ source: nodes[i].id, target: nodes[j].id, value: common.length });
+                    links.push({
+                        source: nodes[i].id,
+                        target: nodes[j].id,
+                        value: common.length,
+                    });
                 }
             }
         }
@@ -427,6 +465,41 @@ let KnowledgeService = class KnowledgeService {
             await this.vector.deleteByIds(`kb_${doc.knowledgeBaseId}`, vectorIds);
         }
         await this.prisma.document.delete({ where: { id: documentId } });
+    }
+    async getSuggestedQuestions(knowledgeBaseId, userId) {
+        await this.checkKbAccess(knowledgeBaseId, userId);
+        const chunks = await this.prisma.documentChunk.findMany({
+            where: { document: { knowledgeBaseId } },
+            orderBy: { id: 'asc' },
+            take: 200,
+        });
+        if (chunks.length === 0)
+            return { questions: [] };
+        const shuffled = chunks.sort(() => Math.random() - 0.5).slice(0, 5);
+        const context = shuffled.map((c) => c.content).join('\n\n---\n\n');
+        const { ChatOpenAI } = await import('@langchain/openai');
+        const llm = new ChatOpenAI({
+            model: 'gpt-4o-mini',
+            temperature: 0.8,
+            maxTokens: 500,
+        });
+        const { HumanMessage, SystemMessage } = await import('@langchain/core/messages');
+        const res = await llm.invoke([
+            new SystemMessage(`你是一个知识库助手。根据以下文档内容，生成 5 个用户可能会问的高质量问题。
+要求：
+1. 问题要具体、有价值，不要泛泛而谈
+2. 问题要基于文档内容，不要编造
+3. 每个问题一行，不要编号，不要多余的解释
+4. 用中文提问`),
+            new HumanMessage(`文档内容：\n${context}`),
+        ]);
+        const text = typeof res.content === 'string' ? res.content : '';
+        const questions = text
+            .split('\n')
+            .map((line) => line.replace(/^\d+[.、)\]】]\s*/, '').trim())
+            .filter((q) => q.length > 5 && q.length < 100)
+            .slice(0, 5);
+        return { questions };
     }
 };
 exports.KnowledgeService = KnowledgeService;

@@ -49,7 +49,12 @@ export class ChatController {
     @Request() req: AuthRequest,
     @Body() body: { title: string },
   ) {
-    return this.chatService.renameSession(sessionId, req.user.id, kbId, body.title);
+    return this.chatService.renameSession(
+      sessionId,
+      req.user.id,
+      kbId,
+      body.title,
+    );
   }
 
   @Delete(':sessionId')
@@ -77,7 +82,13 @@ export class ChatController {
     @Body() dto: SendMessageDto,
     @Res() res: Response,
   ) {
-    await this.chatService.chatStream(sessionId, req.user.id, dto.question, res, dto.model);
+    await this.chatService.chatStream(
+      sessionId,
+      req.user.id,
+      dto.question,
+      res,
+      dto.model,
+    );
   }
 
   // 消息反馈（点赞/踩）
@@ -87,7 +98,12 @@ export class ChatController {
     @Request() req: AuthRequest,
     @Body() body: { type: 'like' | 'dislike'; comment?: string },
   ) {
-    return this.chatService.feedbackMessage(msgId, req.user.id, body.type, body.comment);
+    return this.chatService.feedbackMessage(
+      msgId,
+      req.user.id,
+      body.type,
+      body.comment,
+    );
   }
 
   @Get(':sessionId/messages/:msgId/feedback')

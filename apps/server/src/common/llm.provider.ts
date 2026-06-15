@@ -14,7 +14,11 @@ export interface ModelConfig {
 // 支持的模型列表
 export const AVAILABLE_MODELS: ModelConfig[] = [
   { provider: 'claude', model: 'claude-sonnet-4-6', label: 'Claude Sonnet' },
-  { provider: 'claude', model: 'claude-haiku-4-5-20251001', label: 'Claude Haiku' },
+  {
+    provider: 'claude',
+    model: 'claude-haiku-4-5-20251001',
+    label: 'Claude Haiku',
+  },
   { provider: 'openai', model: 'gpt-4o', label: 'GPT-4o' },
   { provider: 'openai', model: 'gpt-4o-mini', label: 'GPT-4o Mini' },
   { provider: 'deepseek', model: 'deepseek-chat', label: 'DeepSeek V3' },
@@ -51,7 +55,8 @@ export function createLlm(modelName?: string): BaseChatModel {
       baseURL: process.env.ANTHROPIC_BASE_URL,
       defaultHeaders: {
         Authorization: `Bearer ${process.env.ANTHROPIC_API_KEY}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0',
       },
     },
   });

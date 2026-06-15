@@ -1,6 +1,16 @@
 import {
-  Controller, Get, Post, Delete, Patch, Param, Body, Query,
-  UseGuards, UseInterceptors, UploadedFile, Request,
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Patch,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -10,15 +20,20 @@ import { CreateKbDto } from './dto/create-kb.dto';
 const { PDFParse } = require('pdf-parse');
 
 async function extractText(file: Express.Multer.File): Promise<string> {
-  if (file.mimetype === 'application/pdf' || file.originalname.endsWith('.pdf')) {
+  if (
+    file.mimetype === 'application/pdf' ||
+    file.originalname.endsWith('.pdf')
+  ) {
     // pdf-parse v2 要求 Uint8Array，不能用 Node Buffer
     const pdf = new PDFParse(new Uint8Array(file.buffer));
     const result = await pdf.getText();
     return result.text;
   }
   if (
-    file.mimetype === 'text/plain' || file.mimetype === 'text/markdown' ||
-    file.originalname.endsWith('.md') || file.originalname.endsWith('.txt')
+    file.mimetype === 'text/plain' ||
+    file.mimetype === 'text/markdown' ||
+    file.originalname.endsWith('.md') ||
+    file.originalname.endsWith('.txt')
   ) {
     return file.buffer.toString('utf-8');
   }
@@ -32,7 +47,11 @@ export class KnowledgeController {
 
   @Post()
   create(@Request() req: AuthRequest, @Body() dto: CreateKbDto) {
-    return this.knowledge.createKnowledgeBase(req.user.id, dto.name, dto.description);
+    return this.knowledge.createKnowledgeBase(
+      req.user.id,
+      dto.name,
+      dto.description,
+    );
   }
 
   @Get()
@@ -62,9 +81,17 @@ export class KnowledgeController {
     @UploadedFile() file: Express.Multer.File,
     @Body('tags') tags?: string,
   ) {
-    file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    file.originalname = Buffer.from(file.originalname, 'latin1').toString(
+      'utf8',
+    );
     const content = await extractText(file);
-    return this.knowledge.uploadDocument(knowledgeBaseId, req.user.id, file, content, tags);
+    return this.knowledge.uploadDocument(
+      knowledgeBaseId,
+      req.user.id,
+      file,
+      content,
+      tags,
+    );
   }
 
   @Get(':id/documents')
@@ -74,12 +101,20 @@ export class KnowledgeController {
     @Query('tag') tag?: string,
     @Query('folder') folder?: string,
   ) {
-    return this.knowledge.listDocuments(knowledgeBaseId, req.user.id, tag, folder);
+    return this.knowledge.listDocuments(
+      knowledgeBaseId,
+      req.user.id,
+      tag,
+      folder,
+    );
   }
 
   // 获取文件夹树
   @Get(':id/folders')
-  getFolders(@Param('id') knowledgeBaseId: string, @Request() req: AuthRequest) {
+  getFolders(
+    @Param('id') knowledgeBaseId: string,
+    @Request() req: AuthRequest,
+  ) {
     return this.knowledge.getAllFolders(knowledgeBaseId, req.user.id);
   }
 
@@ -110,7 +145,11 @@ export class KnowledgeController {
     @Request() req: AuthRequest,
     @Body() body: { content: string },
   ) {
-    return this.knowledge.updateDocumentContent(docId, req.user.id, body.content);
+    return this.knowledge.updateDocumentContent(
+      docId,
+      req.user.id,
+      body.content,
+    );
   }
 
   // 文档完整内容（给 AI 摘要用）
@@ -120,6 +159,15 @@ export class KnowledgeController {
     @Request() req: AuthRequest,
   ) {
     return this.knowledge.getDocumentContent(docId, req.user.id);
+  }
+
+  // 猜你想问
+  @Get(':id/suggested-questions')
+  getSuggestedQuestions(
+    @Param('id') knowledgeBaseId: string,
+    @Request() req: AuthRequest,
+  ) {
+    return this.knowledge.getSuggestedQuestions(knowledgeBaseId, req.user.id);
   }
 
   // 文档标签
@@ -146,7 +194,9 @@ export class KnowledgeController {
     @Query('topK') topK?: string,
   ) {
     return this.knowledge.hybridSearch(
-      knowledgeBaseId, req.user.id, query,
+      knowledgeBaseId,
+      req.user.id,
+      query,
       topK ? parseInt(topK, 10) : 5,
     );
   }
@@ -159,7 +209,9 @@ export class KnowledgeController {
     @Query('topK') topK?: string,
   ) {
     return this.knowledge.searchDocuments(
-      knowledgeBaseId, req.user.id, query,
+      knowledgeBaseId,
+      req.user.id,
+      query,
       topK ? parseInt(topK, 10) : 5,
     );
   }

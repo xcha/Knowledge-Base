@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 import {
   chatApi,
+  knowledgeApi,
   type ChatSession,
   type ChatMessage,
   type FeedbackData,
@@ -27,6 +28,8 @@ import {
   Loader2,
   Wrench,
   Download,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
 
 type Mode = "rag" | "agent";
@@ -62,6 +65,8 @@ export default function ChatPage({
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [loadingSuggested, setLoadingSuggested] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function selectSession(sessionId: string) {
@@ -90,9 +95,22 @@ export default function ChatPage({
     }
   }
 
+  async function fetchSuggestedQuestions() {
+    setLoadingSuggested(true);
+    try {
+      const res = await knowledgeApi.getSuggestedQuestions(kbId);
+      setSuggestedQuestions(res.data.questions);
+    } catch {
+      setSuggestedQuestions([]);
+    } finally {
+      setLoadingSuggested(false);
+    }
+  }
+
   useEffect(() => {
     fetchSessions();
     fetchModels();
+    fetchSuggestedQuestions();
   }, [kbId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -363,8 +381,49 @@ export default function ChatPage({
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {!activeSession ? (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-              选择或新建一个对话
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="max-w-lg w-full text-center space-y-6">
+                <Sparkles className="size-10 mx-auto text-primary/60" />
+                <h3 className="text-lg font-medium text-foreground">猜你想问</h3>
+                {loadingSuggested ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+                    ))}
+                  </div>
+                ) : suggestedQuestions.length > 0 ? (
+                  <div className="space-y-2">
+                    {suggestedQuestions.map((q, i) => (
+                      <Button
+                        key={i}
+                        variant="outline"
+                        className="w-full justify-start text-left h-auto py-3 px-4 text-sm whitespace-normal card-hover"
+                        onClick={async () => {
+                          // 创建新会话，以问题前30字作为标题
+                          const res = await chatApi.createSession(kbId, q.slice(0, 30));
+                          setSessions((prev) => [res.data, ...prev]);
+                          setActiveSession(res.data.id);
+                          setMessages([]);
+                          setInput(q);
+                        }}
+                      >
+                        <Sparkles className="size-3.5 mr-2 shrink-0 text-primary/60" />
+                        {q}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-xs"
+                      onClick={fetchSuggestedQuestions}
+                    >
+                      <RefreshCw className="size-3 mr-1" /> 换一批
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">上传文档后即可生成推荐问题</p>
+                )}
+              </div>
             </div>
           ) : (
             <>

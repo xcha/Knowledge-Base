@@ -17,12 +17,12 @@ export declare class KnowledgeService {
     }>;
     createKnowledgeBase(userId: string, name: string, description?: string): Promise<{
         id: string;
-        createdAt: Date;
         name: string;
-        userId: string;
-        updatedAt: Date;
         description: string | null;
+        userId: string;
         teamId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     listKnowledgeBases(userId: string): Promise<({
         team: {
@@ -34,33 +34,33 @@ export declare class KnowledgeService {
         };
     } & {
         id: string;
-        createdAt: Date;
         name: string;
-        userId: string;
-        updatedAt: Date;
         description: string | null;
+        userId: string;
         teamId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     })[]>;
     renameKnowledgeBase(id: string, userId: string, name: string): Promise<{
         id: string;
-        createdAt: Date;
         name: string;
-        userId: string;
-        updatedAt: Date;
         description: string | null;
+        userId: string;
         teamId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     updateKnowledgeBase(id: string, userId: string, data: {
         name?: string;
         description?: string;
     }): Promise<{
         id: string;
-        createdAt: Date;
         name: string;
-        userId: string;
-        updatedAt: Date;
         description: string | null;
+        userId: string;
         teamId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     deleteKnowledgeBase(id: string, userId: string): Promise<void>;
     uploadDocument(knowledgeBaseId: string, userId: string, file: Express.Multer.File, content: string, tags?: string): Promise<{
@@ -75,12 +75,12 @@ export declare class KnowledgeService {
             chunks: number;
         };
     } & {
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -89,12 +89,12 @@ export declare class KnowledgeService {
     })[]>;
     getAllFolders(knowledgeBaseId: string, userId: string): Promise<FolderNode>;
     updateDocumentFolder(documentId: string, userId: string, folder: string): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -103,12 +103,12 @@ export declare class KnowledgeService {
     }>;
     getAllTags(knowledgeBaseId: string, userId: string): Promise<string[]>;
     updateDocumentTags(documentId: string, userId: string, tags: string): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -141,13 +141,13 @@ export declare class KnowledgeService {
         chunkCount: number;
     }>;
     getDocumentVersions(documentId: string, userId: string): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         _count: {
             chunks: number;
         };
         originalName: string;
+        size: number;
         version: number;
     }[]>;
     getKnowledgeGraph(knowledgeBaseId: string, userId: string): Promise<{
@@ -164,12 +164,12 @@ export declare class KnowledgeService {
         }[];
     }>;
     renameDocument(documentId: string, userId: string, newName: string): Promise<{
-        size: number;
         id: string;
         createdAt: Date;
         filename: string;
         originalName: string;
         mimeType: string;
+        size: number;
         tags: string;
         folder: string;
         version: number;
@@ -180,4 +180,7 @@ export declare class KnowledgeService {
         chunkCount: number;
     }>;
     deleteDocument(documentId: string, userId: string): Promise<void>;
+    getSuggestedQuestions(knowledgeBaseId: string, userId: string): Promise<{
+        questions: string[];
+    }>;
 }

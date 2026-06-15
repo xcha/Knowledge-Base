@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
@@ -46,17 +50,25 @@ export class KnowledgeService {
     throw new NotFoundException('知识库不存在');
   }
 
-  async createKnowledgeBase(userId: string, name: string, description?: string) {
+  async createKnowledgeBase(
+    userId: string,
+    name: string,
+    description?: string,
+  ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
-      const count = await this.prisma.knowledgeBase.count({ where: { userId } });
+      const count = await this.prisma.knowledgeBase.count({
+        where: { userId },
+      });
       if (count >= user.maxKnowledgeBases) {
         throw new BadRequestException(
           `知识库数量已达上限（${user.maxKnowledgeBases}个），请升级会员或删除旧知识库`,
         );
       }
     }
-    return this.prisma.knowledgeBase.create({ data: { name, description, userId } });
+    return this.prisma.knowledgeBase.create({
+      data: { name, description, userId },
+    });
   }
 
   async listKnowledgeBases(userId: string) {
@@ -83,7 +95,9 @@ export class KnowledgeService {
   }
 
   async renameKnowledgeBase(id: string, userId: string, name: string) {
-    const kb = await this.prisma.knowledgeBase.findFirst({ where: { id, userId } });
+    const kb = await this.prisma.knowledgeBase.findFirst({
+      where: { id, userId },
+    });
     if (!kb) throw new NotFoundException('知识库不存在');
     return this.prisma.knowledgeBase.update({ where: { id }, data: { name } });
   }
@@ -101,7 +115,9 @@ export class KnowledgeService {
   }
 
   async deleteKnowledgeBase(id: string, userId: string) {
-    const kb = await this.prisma.knowledgeBase.findFirst({ where: { id, userId } });
+    const kb = await this.prisma.knowledgeBase.findFirst({
+      where: { id, userId },
+    });
     if (!kb) throw new NotFoundException('知识库不存在');
     await this.vector.deleteCollection(`kb_${id}`).catch(() => null);
     await this.prisma.knowledgeBase.delete({ where: { id } });
@@ -122,7 +138,9 @@ export class KnowledgeService {
         where: { knowledgeBase: { userId } },
       });
       if (docCount >= user.maxDocuments) {
-        throw new BadRequestException(`文档总数已达上限（${user.maxDocuments}个），请升级会员`);
+        throw new BadRequestException(
+          `文档总数已达上限（${user.maxDocuments}个），请升级会员`,
+        );
       }
     }
 
@@ -133,7 +151,9 @@ export class KnowledgeService {
     });
 
     const version = existing ? existing.version + 1 : 1;
-    const parentId = existing ? (existing.parentDocumentId ?? existing.id) : undefined;
+    const parentId = existing
+      ? (existing.parentDocumentId ?? existing.id)
+      : undefined;
 
     const doc = await this.prisma.document.create({
       data: {
@@ -153,17 +173,32 @@ export class KnowledgeService {
     return { documentId: doc.id, chunkCount: chunks.length, version };
   }
 
-  private async embedAndStore(documentId: string, knowledgeBaseId: string, chunks: string[]) {
+  private async embedAndStore(
+    documentId: string,
+    knowledgeBaseId: string,
+    chunks: string[],
+  ) {
     const collectionName = `kb_${knowledgeBaseId}`;
     const embeddings = await this.embedder.embedDocuments(chunks);
     const ids = chunks.map((_, i) => `${documentId}_chunk_${i}`);
     const metadatas = chunks.map((_, i) => ({
-      documentId, knowledgeBaseId, chunkIndex: String(i),
+      documentId,
+      knowledgeBaseId,
+      chunkIndex: String(i),
     }));
-    await this.vector.addDocuments(collectionName, ids, embeddings, chunks, metadatas);
+    await this.vector.addDocuments(
+      collectionName,
+      ids,
+      embeddings,
+      chunks,
+      metadatas,
+    );
     await this.prisma.documentChunk.createMany({
       data: chunks.map((content, i) => ({
-        content, vectorId: ids[i], chunkIndex: i, documentId,
+        content,
+        vectorId: ids[i],
+        chunkIndex: i,
+        documentId,
       })),
     });
   }
@@ -173,7 +208,12 @@ export class KnowledgeService {
   }
 
   // ---- 文档列表（支持标签筛选 + 文件夹筛选）----
-  async listDocuments(knowledgeBaseId: string, userId: string, tag?: string, folder?: string) {
+  async listDocuments(
+    knowledgeBaseId: string,
+    userId: string,
+    tag?: string,
+    folder?: string,
+  ) {
     await this.checkKbAccess(knowledgeBaseId, userId);
 
     const where: any = { knowledgeBaseId };
@@ -221,10 +261,15 @@ export class KnowledgeService {
 
       for (const part of parts) {
         const parentPath = currentPath;
-        currentPath = currentPath === '/' ? `/${part}/` : `${currentPath}${part}/`;
+        currentPath =
+          currentPath === '/' ? `/${part}/` : `${currentPath}${part}/`;
 
         if (!nodeMap.has(currentPath)) {
-          const newNode: FolderNode = { name: part, path: currentPath, children: [] };
+          const newNode: FolderNode = {
+            name: part,
+            path: currentPath,
+            children: [],
+          };
           nodeMap.set(currentPath, newNode);
           parentNode.children.push(newNode);
         }
@@ -236,7 +281,11 @@ export class KnowledgeService {
   }
 
   // ---- 更新文档文件夹 ----
-  async updateDocumentFolder(documentId: string, userId: string, folder: string) {
+  async updateDocumentFolder(
+    documentId: string,
+    userId: string,
+    folder: string,
+  ) {
     const doc = await this.prisma.document.findFirst({
       where: { id: documentId },
       include: { knowledgeBase: true },
@@ -246,8 +295,10 @@ export class KnowledgeService {
 
     // 规范化文件夹路径
     let normalizedFolder = folder.trim();
-    if (!normalizedFolder.startsWith('/')) normalizedFolder = '/' + normalizedFolder;
-    if (!normalizedFolder.endsWith('/')) normalizedFolder = normalizedFolder + '/';
+    if (!normalizedFolder.startsWith('/'))
+      normalizedFolder = '/' + normalizedFolder;
+    if (!normalizedFolder.endsWith('/'))
+      normalizedFolder = normalizedFolder + '/';
     if (normalizedFolder === '//') normalizedFolder = '/';
 
     return this.prisma.document.update({
@@ -297,7 +348,6 @@ export class KnowledgeService {
     query: string,
     topK = 5,
   ) {
-    
     await this.checkKbAccess(knowledgeBaseId, userId);
 
     const kb = await this.prisma.knowledgeBase.findFirst({
@@ -307,7 +357,11 @@ export class KnowledgeService {
 
     // 第1路：向量语义检索（Chroma）
     const embedding = await this.getEmbedding(query);
-    const vecResult = await this.vector.query(`kb_${knowledgeBaseId}`, embedding, topK * 2);
+    const vecResult = await this.vector.query(
+      `kb_${knowledgeBaseId}`,
+      embedding,
+      topK * 2,
+    );
 
     // 第2路：PostgreSQL 全文模糊检索（pg_trgm）
     const ftsResults = await this.prisma.documentChunk.findMany({
@@ -387,7 +441,12 @@ export class KnowledgeService {
   }
 
   // ---- 向量检索（保留原接口） ----
-  async searchDocuments(knowledgeBaseId: string, userId: string, query: string, topK = 5) {
+  async searchDocuments(
+    knowledgeBaseId: string,
+    userId: string,
+    query: string,
+    topK = 5,
+  ) {
     return this.hybridSearch(knowledgeBaseId, userId, query, topK);
   }
 
@@ -395,7 +454,10 @@ export class KnowledgeService {
   async getDocumentContent(documentId: string, userId: string) {
     const doc = await this.prisma.document.findFirst({
       where: { id: documentId },
-      include: { chunks: { orderBy: { chunkIndex: 'asc' } }, knowledgeBase: true },
+      include: {
+        chunks: { orderBy: { chunkIndex: 'asc' } },
+        knowledgeBase: true,
+      },
     });
     if (!doc) throw new NotFoundException('文档不存在');
     await this.checkKbAccess(doc.knowledgeBaseId, userId);
@@ -426,7 +488,10 @@ export class KnowledgeService {
         OR: [{ id: rootId }, { parentDocumentId: rootId }],
       },
       select: {
-        id: true, originalName: true, version: true, size: true,
+        id: true,
+        originalName: true,
+        version: true,
+        size: true,
         _count: { select: { chunks: true } },
         createdAt: true,
       },
@@ -436,7 +501,6 @@ export class KnowledgeService {
 
   // ---- 知识图谱（标签共现关系）----
   async getKnowledgeGraph(knowledgeBaseId: string, userId: string) {
-    
     await this.checkKbAccess(knowledgeBaseId, userId);
 
     const kb = await this.prisma.knowledgeBase.findFirst({
@@ -454,20 +518,36 @@ export class KnowledgeService {
     // 构建节点
     const nodes = docs.slice(0, 20).map((d) => ({
       id: d.id,
-      name: d.originalName.length > 20 ? d.originalName.slice(0, 20) + '...' : d.originalName,
-      symbolSize: Math.min(40, 20 + (d.tags?.split(',').filter(Boolean).length ?? 0) * 8),
+      name:
+        d.originalName.length > 20
+          ? d.originalName.slice(0, 20) + '...'
+          : d.originalName,
+      symbolSize: Math.min(
+        40,
+        20 + (d.tags?.split(',').filter(Boolean).length ?? 0) * 8,
+      ),
       tags: d.tags,
     }));
 
     // 构建边：标签重叠的文档之间建立连线
     const links: { source: string; target: string; value: number }[] = [];
     for (let i = 0; i < nodes.length; i++) {
-      const tagsI = (nodes[i].tags ?? '').split(',').map((t: string) => t.trim()).filter(Boolean);
+      const tagsI = (nodes[i].tags ?? '')
+        .split(',')
+        .map((t: string) => t.trim())
+        .filter(Boolean);
       for (let j = i + 1; j < nodes.length; j++) {
-        const tagsJ = (nodes[j].tags ?? '').split(',').map((t: string) => t.trim()).filter(Boolean);
+        const tagsJ = (nodes[j].tags ?? '')
+          .split(',')
+          .map((t: string) => t.trim())
+          .filter(Boolean);
         const common = tagsI.filter((t: string) => tagsJ.includes(t));
         if (common.length > 0) {
-          links.push({ source: nodes[i].id, target: nodes[j].id, value: common.length });
+          links.push({
+            source: nodes[i].id,
+            target: nodes[j].id,
+            value: common.length,
+          });
         }
       }
     }
@@ -486,7 +566,11 @@ export class KnowledgeService {
     });
   }
 
-  async updateDocumentContent(documentId: string, userId: string, content: string) {
+  async updateDocumentContent(
+    documentId: string,
+    userId: string,
+    content: string,
+  ) {
     const doc = await this.prisma.document.findFirst({
       where: { id: documentId, knowledgeBase: { userId } },
       include: { chunks: true, knowledgeBase: true },
@@ -518,5 +602,54 @@ export class KnowledgeService {
       await this.vector.deleteByIds(`kb_${doc.knowledgeBaseId}`, vectorIds);
     }
     await this.prisma.document.delete({ where: { id: documentId } });
+  }
+
+  // ---- 猜你想问：根据文档内容生成推荐问题 ----
+  async getSuggestedQuestions(knowledgeBaseId: string, userId: string) {
+    await this.checkKbAccess(knowledgeBaseId, userId);
+
+    // 随机抽 5 个文档块作为上下文
+    const chunks = await this.prisma.documentChunk.findMany({
+      where: { document: { knowledgeBaseId } },
+      orderBy: { id: 'asc' },
+      take: 200,
+    });
+
+    if (chunks.length === 0) return { questions: [] };
+
+    // 简单随机抽 5 块
+    const shuffled = chunks.sort(() => Math.random() - 0.5).slice(0, 5);
+    const context = shuffled.map((c) => c.content).join('\n\n---\n\n');
+
+    // 调 LLM 生成问题
+    const { ChatOpenAI } = await import('@langchain/openai');
+    const llm = new ChatOpenAI({
+      model: 'gpt-4o-mini',
+      temperature: 0.8,
+      maxTokens: 500,
+    });
+
+    const { HumanMessage, SystemMessage } =
+      await import('@langchain/core/messages');
+    const res = await llm.invoke([
+      new SystemMessage(
+        `你是一个知识库助手。根据以下文档内容，生成 5 个用户可能会问的高质量问题。
+要求：
+1. 问题要具体、有价值，不要泛泛而谈
+2. 问题要基于文档内容，不要编造
+3. 每个问题一行，不要编号，不要多余的解释
+4. 用中文提问`,
+      ),
+      new HumanMessage(`文档内容：\n${context}`),
+    ]);
+
+    const text = typeof res.content === 'string' ? res.content : '';
+    const questions = text
+      .split('\n')
+      .map((line) => line.replace(/^\d+[.、)\]】]\s*/, '').trim())
+      .filter((q) => q.length > 5 && q.length < 100)
+      .slice(0, 5);
+
+    return { questions };
   }
 }

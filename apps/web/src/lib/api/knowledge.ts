@@ -65,4 +65,8 @@ export const knowledgeApi = {
   // ---- 搜索 ----
   getGraph: (kbId: string) =>
     get<GraphData>(`/knowledge/${kbId}/graph`),
+
+  // ---- 猜你想问 ----
+  getSuggestedQuestions: (kbId: string) =>
+    get<{ questions: string[] }>(`/knowledge/${kbId}/suggested-questions`),
 };
