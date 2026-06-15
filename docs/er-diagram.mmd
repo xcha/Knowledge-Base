@@ -1,0 +1,90 @@
+erDiagram
+    User ||--o{ KnowledgeBase : 创建
+    User ||--o{ PaymentOrder : 产生
+    KnowledgeBase ||--o{ Document : 包含
+    KnowledgeBase ||--o{ ChatSession : "对话会话"
+    Document ||--o{ DocumentChunk : "切片为"
+    ChatSession ||--o{ ChatMessage : "消息记录"
+
+    User {
+        string id PK "cuid主键"
+        string email UK "邮箱（唯一）"
+        string password "bcrypt哈希"
+        string name "昵称"
+        string phone UK "手机号（唯一）"
+        boolean phoneVerified "是否验证"
+        string membership "会员等级 free/basic/pro"
+        datetime membershipExpiresAt "会员到期时间"
+        int maxKnowledgeBases "知识库配额"
+        int maxDocuments "文档配额"
+        datetime createdAt "创建时间"
+        datetime updatedAt "更新时间"
+    }
+
+    KnowledgeBase {
+        string id PK "cuid主键"
+        string name "知识库名称"
+        string description "描述"
+        string userId FK "创建者"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Document {
+        string id PK "cuid主键"
+        string filename "存储文件名"
+        string originalName "原始文件名"
+        string mimeType "文件类型"
+        int size "文件大小（字节）"
+        string knowledgeBaseId FK "所属知识库"
+        datetime createdAt
+    }
+
+    DocumentChunk {
+        string id PK "cuid主键"
+        string content "文本片段（~500字）"
+        string vectorId "Chroma向量ID"
+        int chunkIndex "片段序号"
+        string documentId FK "所属文档"
+        datetime createdAt
+    }
+
+    ChatSession {
+        string id PK "cuid主键"
+        string title "会话标题"
+        string knowledgeBaseId FK "所属知识库"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    ChatMessage {
+        string id PK "cuid主键"
+        string role "角色 user/assistant"
+        string content "消息内容"
+        string sessionId FK "所属会话"
+        datetime createdAt
+    }
+
+    SmsCode {
+        string id PK "cuid主键"
+        string phone "手机号"
+        string code "验证码"
+        string type "类型 register/login/reset"
+        boolean used "是否已使用"
+        datetime expiresAt "过期时间"
+        datetime createdAt
+    }
+
+    PaymentOrder {
+        string id PK "cuid主键"
+        string userId FK "支付用户"
+        string outTradeNo UK "商户订单号（唯一）"
+        string subject "商品名称"
+        string totalAmount "金额（字符串防精度丢失）"
+        string status "状态 pending/paid/closed"
+        string membership "购买的会员等级"
+        int durationMonths "购买月数"
+        datetime paidAt "支付时间"
+        datetime createdAt
+        datetime updatedAt
+    }

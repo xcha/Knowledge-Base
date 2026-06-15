@@ -17,6 +17,10 @@ const knowledge_module_1 = require("./knowledge/knowledge.module");
 const chat_module_1 = require("./chat/chat.module");
 const vector_module_1 = require("./vector/vector.module");
 const agent_module_1 = require("./agent/agent.module");
+const payment_module_1 = require("./payment/payment.module");
+const user_module_1 = require("./user/user.module");
+const team_module_1 = require("./team/team.module");
+const sms_module_1 = require("./sms/sms.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -30,6 +34,10 @@ exports.AppModule = AppModule = __decorate([
             chat_module_1.ChatModule,
             vector_module_1.VectorModule,
             agent_module_1.AgentModule,
+            payment_module_1.PaymentModule,
+            user_module_1.UserModule,
+            team_module_1.TeamModule,
+            sms_module_1.SmsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -6,8 +6,8 @@ export declare class ChatService {
     private prisma;
     private vector;
     private knowledge;
+    private readonly logger;
     constructor(prisma: PrismaService, vector: VectorService, knowledge: KnowledgeService);
-    private llm;
     createSession(knowledgeBaseId: string, userId: string, title?: string): Promise<{
         id: string;
         createdAt: Date;
@@ -26,13 +26,41 @@ export declare class ChatService {
         knowledgeBaseId: string;
         title: string | null;
     })[]>;
-    getSessionMessages(sessionId: string): Promise<{
+    getSessionMessages(sessionId: string, userId: string, kbId: string): Promise<{
         id: string;
         createdAt: Date;
-        content: string;
         role: string;
+        content: string;
         sessionId: string;
     }[]>;
-    deleteSession(sessionId: string): Promise<void>;
-    chatStream(sessionId: string, userId: string, question: string, res: Response): Promise<void>;
+    renameSession(sessionId: string, userId: string, kbId: string, title: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        knowledgeBaseId: string;
+        title: string | null;
+    }>;
+    deleteSession(sessionId: string, userId: string, kbId: string): Promise<void>;
+    feedbackMessage(messageId: string, userId: string, type: 'like' | 'dislike', comment?: string): Promise<{
+        id: string;
+        userId: string;
+        createdAt: Date;
+        type: string;
+        messageId: string;
+        comment: string | null;
+    }>;
+    getMessageFeedback(messageId: string): Promise<{
+        likes: number;
+        dislikes: number;
+        total: number;
+        list: {
+            id: string;
+            userId: string;
+            createdAt: Date;
+            type: string;
+            messageId: string;
+            comment: string | null;
+        }[];
+    }>;
+    chatStream(sessionId: string, userId: string, question: string, res: Response, model?: string): Promise<void>;
 }

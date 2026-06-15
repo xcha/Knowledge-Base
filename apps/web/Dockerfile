@@ -12,7 +12,7 @@ RUN pnpm install --frozen-lockfile --filter web
 FROM deps AS builder
 WORKDIR /app
 COPY apps/web ./apps/web
-ARG NEXT_PUBLIC_API_URL=http://localhost:5001/api
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm --filter web build
 

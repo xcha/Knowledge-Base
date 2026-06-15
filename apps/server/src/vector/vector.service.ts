@@ -62,7 +62,12 @@ export class VectorService implements OnModuleInit {
     collectionName: string,
     queryEmbedding: number[],
     nResults = 5,
-  ): Promise<{ ids: string[]; documents: string[]; distances: number[]; metadatas: Record<string, string>[] }> {
+  ): Promise<{
+    ids: string[];
+    documents: string[];
+    distances: number[];
+    metadatas: Record<string, string>[];
+  }> {
     const collection = await this.getCollection(collectionName);
     const result = await collection.query({
       queryEmbeddings: [queryEmbedding],

@@ -1,8 +1,7 @@
-declare const AuthRequest_base: any;
-export declare class AuthRequest extends AuthRequest_base {
+import type { Request } from 'express';
+export interface AuthRequest extends Request {
     user: {
         id: string;
         email: string;
     };
 }
-export {};

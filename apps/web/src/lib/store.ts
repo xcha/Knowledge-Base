@@ -1,31 +1,56 @@
-'use client';
+"use client";
 
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { User } from './api';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { useEffect, useState } from "react";
+import type { User } from "./api";
 
 interface AuthState {
   user: User | null;
-  token: string | null;
-  setAuth: (user: User, token: string) => void;
+  accessToken: string | null;
+  refreshToken: string | null;
+  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setAccessToken: (token: string) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
-  // persist 将 token 同步到 localStorage，刷新页面不丢失登录态
   persist(
     (set) => ({
       user: null,
-      token: null,
-      setAuth: (user, token) => {
-        localStorage.setItem('token', token);
-        set({ user, token });
+      accessToken: null,
+      refreshToken: null,
+      setAuth: (user, accessToken, refreshToken) => {
+        localStorage.setItem("token", accessToken);
+        set({ user, accessToken, refreshToken });
+      },
+      setAccessToken: (token) => {
+        localStorage.setItem("token", token);
+        set({ accessToken: token });
       },
       logout: () => {
-        localStorage.removeItem('token');
-        set({ user: null, token: null });
+        localStorage.removeItem("token");
+        set({ user: null, accessToken: null, refreshToken: null });
       },
     }),
-    { name: 'auth-storage', partialize: (s) => ({ user: s.user, token: s.token }) },
+    {
+      name: "auth-storage",
+      partialize: (s) => ({
+        user: s.user,
+        accessToken: s.accessToken,
+        refreshToken: s.refreshToken,
+      }),
+    },
   ),
 );
+
+/**
+ * 等待客户端挂载 + zustand persist 水合完毕
+ */
+export function useHydrated() {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+  return hydrated;
+}

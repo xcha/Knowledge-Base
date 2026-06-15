@@ -16,14 +16,14 @@ exports.AgentController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const agent_service_1 = require("./agent.service");
-const types_1 = require("../common/types");
+const agent_chat_dto_1 = require("./dto/agent-chat.dto");
 let AgentController = class AgentController {
     agentService;
     constructor(agentService) {
         this.agentService = agentService;
     }
-    async agentChat(kbId, req, body, res) {
-        await this.agentService.agentStream(kbId, req.user.id, body.question, body.sessionId, res);
+    async agentChat(kbId, req, dto, res) {
+        await this.agentService.agentStream(kbId, req.user.id, dto.question, dto.sessionId, res);
     }
 };
 exports.AgentController = AgentController;
@@ -34,7 +34,7 @@ __decorate([
     __param(2, (0, common_1.Body)()),
     __param(3, (0, common_1.Res)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, types_1.AuthRequest, Object, Object]),
+    __metadata("design:paramtypes", [String, Object, agent_chat_dto_1.AgentChatDto, Object]),
     __metadata("design:returntype", Promise)
 ], AgentController.prototype, "agentChat", null);
 exports.AgentController = AgentController = __decorate([
