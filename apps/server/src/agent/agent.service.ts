@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
+import { TokenUsageService } from '../common/token-usage.service';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 import { buildAgentTools } from './agent.tools';
@@ -17,6 +18,7 @@ export class AgentService {
     private prisma: PrismaService,
     private vector: VectorService,
     private knowledge: KnowledgeService,
+    private tokenUsage: TokenUsageService,
   ) {}
 
   /**
@@ -36,6 +38,15 @@ export class AgentService {
     sessionId: string | undefined,
     res: Response,
   ) {
+    // 检查 token 用量是否超限
+    const tokenCheck = await this.tokenUsage.checkTokenLimit(userId);
+    if (!tokenCheck.allowed) {
+      setupSseHeaders(res);
+      sendSse(res, { error: `本月 Token 用量已达到上限（${tokenCheck.used.toLocaleString()} / ${tokenCheck.limit.toLocaleString()}），请升级会员或下月再试` });
+      res.end();
+      return;
+    }
+
     await this.knowledge.checkKbAccess(knowledgeBaseId, userId);
 
     // 构建工具集，注入当前知识库 ID
@@ -57,13 +68,17 @@ export class AgentService {
         - search_knowledge：在知识库中检索相关内容
         - get_document_list：查看知识库中有哪些文档（含ID和标签）
         - get_document_content：获取指定文档的完整文本内容
+        - web_search：联网搜索互联网获取最新信息
+        - generate_mind_map：根据知识库内容生成思维导图
 
         回答策略：
         1. 如果问题需要查找具体信息，先调用 search_knowledge
         2. 如果用户询问有哪些文档，调用 get_document_list
         3. 如果用户要求总结/概括/摘要某文档，先 get_document_list 拿到文档ID，再调 get_document_content 获取全文，最后生成摘要
-        4. 如果问题是通用知识，可以直接回答
-        5. 基于检索结果给出准确、有依据的回答`,
+        4. 如果知识库中找不到答案，或问题涉及时事/最新资讯，调用 web_search 联网搜索
+        5. 如果用户要求画思维导图/脑图/整理知识结构，调用 generate_mind_map
+        6. 如果问题是通用知识，可以直接回答
+        7. 基于检索结果给出准确、有依据的回答`,
     });
 
     // 加载历史消息（如果有 sessionId）
@@ -138,6 +153,13 @@ export class AgentService {
           where: { id: sessionId },
           data: { updatedAt: new Date() },
         });
+      }
+
+      // 记录 token 用量（Agent 模式估算）
+      if (fullContent) {
+        const estimatedInput = Math.ceil(question.length / 3) + 200; // 加上系统提示的开销
+        const estimatedOutput = Math.ceil(fullContent.length / 3);
+        this.tokenUsage.record(userId, 'claude-sonnet-4-6', estimatedInput, estimatedOutput).catch(() => null);
       }
 
       sendSse(res, { done: true });

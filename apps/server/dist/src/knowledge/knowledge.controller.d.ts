@@ -6,12 +6,12 @@ export declare class KnowledgeController {
     constructor(knowledge: KnowledgeService);
     create(req: AuthRequest, dto: CreateKbDto): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         userId: string;
-        teamId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        teamId: string | null;
     }>;
     list(req: AuthRequest): Promise<({
         team: {
@@ -23,24 +23,24 @@ export declare class KnowledgeController {
         };
     } & {
         id: string;
-        name: string;
-        description: string | null;
         userId: string;
-        teamId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        teamId: string | null;
     })[]>;
     updateKb(id: string, req: AuthRequest, body: {
         name?: string;
         description?: string;
     }): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         userId: string;
-        teamId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        teamId: string | null;
     }>;
     deleteKb(id: string, req: AuthRequest): Promise<void>;
     uploadDocument(knowledgeBaseId: string, req: AuthRequest, file: Express.Multer.File, tags?: string): Promise<{
@@ -55,6 +55,7 @@ export declare class KnowledgeController {
     } & {
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -63,7 +64,6 @@ export declare class KnowledgeController {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     })[]>;
     getFolders(knowledgeBaseId: string, req: AuthRequest): Promise<import("./knowledge.service").FolderNode>;
     renameDocument(docId: string, req: AuthRequest, body: {
@@ -71,6 +71,7 @@ export declare class KnowledgeController {
     }): Promise<{
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -79,13 +80,13 @@ export declare class KnowledgeController {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     }>;
     updateFolder(docId: string, req: AuthRequest, body: {
         folder: string;
     }): Promise<{
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -94,7 +95,6 @@ export declare class KnowledgeController {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     }>;
     updateContent(docId: string, req: AuthRequest, body: {
         content: string;
@@ -117,6 +117,7 @@ export declare class KnowledgeController {
     }): Promise<{
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -125,7 +126,6 @@ export declare class KnowledgeController {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     }>;
     hybridSearch(knowledgeBaseId: string, req: AuthRequest, query: string, topK?: string): Promise<{
         query: string;

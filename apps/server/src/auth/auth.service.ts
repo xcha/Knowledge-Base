@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import * as svgCaptcha from 'svg-captcha';
 import { randomInt, randomBytes } from 'crypto';
@@ -32,6 +33,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private sms: SmsService,
+    private mail: MailService,
     private config: ConfigService,
   ) {}
 
@@ -112,6 +114,55 @@ export class AuthService {
     return true;
   }
 
+  // ========== 邮箱验证码 ==========
+  async sendEmailCode(
+    email: string,
+    type: string = 'register',
+  ): Promise<{ success: boolean }> {
+    const recent = await this.prisma.smsCode.findFirst({
+      where: {
+        phone: email, // 复用 SmsCode 表，phone 字段存邮箱
+        type: `email_${type}`,
+        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+      },
+    });
+    if (recent) throw new BadRequestException('发送过于频繁，请60秒后再试');
+
+    const code = String(randomInt(100000, 1000000));
+
+    await this.prisma.smsCode.create({
+      data: {
+        phone: email,
+        code,
+        type: `email_${type}`,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      },
+    });
+
+    await this.mail.sendCode(email, code, type);
+    return { success: true };
+  }
+
+  async verifyEmailCode(
+    email: string,
+    code: string,
+    type: string,
+  ): Promise<boolean> {
+    const record = await this.prisma.smsCode.findFirst({
+      where: { phone: email, code, type: `email_${type}`, used: false },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!record) return false;
+    if (record.expiresAt < new Date()) return false;
+
+    await this.prisma.smsCode.update({
+      where: { id: record.id },
+      data: { used: true },
+    });
+    return true;
+  }
+
   // ========== 双 Token 签发 ==========
   private async signTokenPair(userId: string, email: string) {
     const accessToken = this.jwt.sign(
@@ -169,7 +220,18 @@ export class AuthService {
   }
 
   // ========== 邮箱注册 ==========
-  async register(email: string, password: string, name?: string) {
+  async register(
+    email: string,
+    password: string,
+    name?: string,
+    emailCode?: string,
+  ) {
+    // 如果提供了邮箱验证码，则验证
+    if (emailCode) {
+      const valid = await this.verifyEmailCode(email, emailCode, 'register');
+      if (!valid) throw new BadRequestException('邮箱验证码错误或已过期');
+    }
+
     const exists = await this.prisma.user.findUnique({ where: { email } });
     if (exists) throw new ConflictException('邮箱已被注册');
 

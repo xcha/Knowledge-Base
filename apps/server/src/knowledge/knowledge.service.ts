@@ -608,7 +608,7 @@ export class KnowledgeService {
   async getSuggestedQuestions(knowledgeBaseId: string, userId: string) {
     await this.checkKbAccess(knowledgeBaseId, userId);
 
-    // 随机抽 5 个文档块作为上下文
+    // 随机抽 10 个文档块
     const chunks = await this.prisma.documentChunk.findMany({
       where: { document: { knowledgeBaseId } },
       orderBy: { id: 'asc' },
@@ -617,39 +617,54 @@ export class KnowledgeService {
 
     if (chunks.length === 0) return { questions: [] };
 
-    // 简单随机抽 5 块
-    const shuffled = chunks.sort(() => Math.random() - 0.5).slice(0, 5);
-    const context = shuffled.map((c) => c.content).join('\n\n---\n\n');
+    const shuffled = chunks.sort(() => Math.random() - 0.5).slice(0, 10);
 
-    // 调 LLM 生成问题
-    const { ChatOpenAI } = await import('@langchain/openai');
-    const llm = new ChatOpenAI({
-      model: 'gpt-4o-mini',
-      temperature: 0.8,
-      maxTokens: 500,
-    });
+    // 从文档内容中提取关键句，生成问题模板
+    const questions: string[] = [];
+    const questionTemplates = [
+      (topic: string) => `${topic}是什么？`,
+      (topic: string) => `${topic}有哪些内容？`,
+      (topic: string) => `关于${topic}，能详细介绍一下吗？`,
+      (topic: string) => `${topic}的核心要点是什么？`,
+      (topic: string) => `${topic}有什么注意事项？`,
+    ];
 
-    const { HumanMessage, SystemMessage } =
-      await import('@langchain/core/messages');
-    const res = await llm.invoke([
-      new SystemMessage(
-        `你是一个知识库助手。根据以下文档内容，生成 5 个用户可能会问的高质量问题。
-要求：
-1. 问题要具体、有价值，不要泛泛而谈
-2. 问题要基于文档内容，不要编造
-3. 每个问题一行，不要编号，不要多余的解释
-4. 用中文提问`,
-      ),
-      new HumanMessage(`文档内容：\n${context}`),
-    ]);
+    for (const chunk of shuffled) {
+      if (questions.length >= 5) break;
+      const content = chunk.content.trim();
+      if (content.length < 20) continue;
 
-    const text = typeof res.content === 'string' ? res.content : '';
-    const questions = text
-      .split('\n')
-      .map((line) => line.replace(/^\d+[.、)\]】]\s*/, '').trim())
-      .filter((q) => q.length > 5 && q.length < 100)
-      .slice(0, 5);
+      // 提取第一个句号/问号/感叹号前的内容作为主题
+      const match = content.match(/^(.{4,30})[。！？\n]/);
+      if (match) {
+        const topic = match[1].replace(/^[，,、：:；;""]+/, '').trim();
+        if (topic.length >= 3 && topic.length <= 25) {
+          const template = questionTemplates[questions.length % questionTemplates.length];
+          const q = template(topic);
+          if (!questions.includes(q)) {
+            questions.push(q);
+          }
+        }
+      }
+    }
 
-    return { questions };
+    // 如果提取的问题不够，用文档名补充
+    if (questions.length < 3) {
+      const docs = await this.prisma.document.findMany({
+        where: { knowledgeBaseId },
+        select: { originalName: true },
+        take: 5,
+      });
+      for (const doc of docs) {
+        if (questions.length >= 5) break;
+        const name = doc.originalName.replace(/\.\w+$/, '');
+        const q = `关于「${name}」的主要内容是什么？`;
+        if (!questions.includes(q)) {
+          questions.push(q);
+        }
+      }
+    }
+
+    return { questions: questions.slice(0, 5) };
   }
 }

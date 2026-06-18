@@ -475,31 +475,50 @@ let KnowledgeService = class KnowledgeService {
         });
         if (chunks.length === 0)
             return { questions: [] };
-        const shuffled = chunks.sort(() => Math.random() - 0.5).slice(0, 5);
-        const context = shuffled.map((c) => c.content).join('\n\n---\n\n');
-        const { ChatOpenAI } = await import('@langchain/openai');
-        const llm = new ChatOpenAI({
-            model: 'gpt-4o-mini',
-            temperature: 0.8,
-            maxTokens: 500,
-        });
-        const { HumanMessage, SystemMessage } = await import('@langchain/core/messages');
-        const res = await llm.invoke([
-            new SystemMessage(`你是一个知识库助手。根据以下文档内容，生成 5 个用户可能会问的高质量问题。
-要求：
-1. 问题要具体、有价值，不要泛泛而谈
-2. 问题要基于文档内容，不要编造
-3. 每个问题一行，不要编号，不要多余的解释
-4. 用中文提问`),
-            new HumanMessage(`文档内容：\n${context}`),
-        ]);
-        const text = typeof res.content === 'string' ? res.content : '';
-        const questions = text
-            .split('\n')
-            .map((line) => line.replace(/^\d+[.、)\]】]\s*/, '').trim())
-            .filter((q) => q.length > 5 && q.length < 100)
-            .slice(0, 5);
-        return { questions };
+        const shuffled = chunks.sort(() => Math.random() - 0.5).slice(0, 10);
+        const questions = [];
+        const questionTemplates = [
+            (topic) => `${topic}是什么？`,
+            (topic) => `${topic}有哪些内容？`,
+            (topic) => `关于${topic}，能详细介绍一下吗？`,
+            (topic) => `${topic}的核心要点是什么？`,
+            (topic) => `${topic}有什么注意事项？`,
+        ];
+        for (const chunk of shuffled) {
+            if (questions.length >= 5)
+                break;
+            const content = chunk.content.trim();
+            if (content.length < 20)
+                continue;
+            const match = content.match(/^(.{4,30})[。！？\n]/);
+            if (match) {
+                const topic = match[1].replace(/^[，,、：:；;""]+/, '').trim();
+                if (topic.length >= 3 && topic.length <= 25) {
+                    const template = questionTemplates[questions.length % questionTemplates.length];
+                    const q = template(topic);
+                    if (!questions.includes(q)) {
+                        questions.push(q);
+                    }
+                }
+            }
+        }
+        if (questions.length < 3) {
+            const docs = await this.prisma.document.findMany({
+                where: { knowledgeBaseId },
+                select: { originalName: true },
+                take: 5,
+            });
+            for (const doc of docs) {
+                if (questions.length >= 5)
+                    break;
+                const name = doc.originalName.replace(/\.\w+$/, '');
+                const q = `关于「${name}」的主要内容是什么？`;
+                if (!questions.includes(q)) {
+                    questions.push(q);
+                }
+            }
+        }
+        return { questions: questions.slice(0, 5) };
     }
 };
 exports.KnowledgeService = KnowledgeService;

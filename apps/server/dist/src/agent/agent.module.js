@@ -12,13 +12,14 @@ const agent_service_1 = require("./agent.service");
 const agent_controller_1 = require("./agent.controller");
 const vector_module_1 = require("../vector/vector.module");
 const knowledge_module_1 = require("../knowledge/knowledge.module");
+const token_usage_service_1 = require("../common/token-usage.service");
 let AgentModule = class AgentModule {
 };
 exports.AgentModule = AgentModule;
 exports.AgentModule = AgentModule = __decorate([
     (0, common_1.Module)({
         imports: [vector_module_1.VectorModule, knowledge_module_1.KnowledgeModule],
-        providers: [agent_service_1.AgentService],
+        providers: [agent_service_1.AgentService, token_usage_service_1.TokenUsageService],
         controllers: [agent_controller_1.AgentController],
     })
 ], AgentModule);

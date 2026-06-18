@@ -129,6 +129,15 @@ export async function post<T>(
   return request.post<T>(url, data, config);
 }
 
+/** PUT 请求 */
+export async function put<T>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<AxiosResponse<T>> {
+  return request.put<T>(url, data, config);
+}
+
 /** PATCH 请求 */
 export async function patch<T>(
   url: string,

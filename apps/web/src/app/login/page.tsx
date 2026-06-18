@@ -2,7 +2,7 @@
 
 import { getErrorMessage } from "@/lib/error";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
@@ -21,6 +21,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +35,9 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(email, password);
       setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
-      router.push("/dashboard");
+      // 登录后跳转到 redirect 参数指定的页面，默认跳转到 dashboard
+      const redirect = searchParams.get("redirect") || "/dashboard";
+      router.push(redirect);
     } catch (err: unknown) {
       setError(getErrorMessage(err, "登录失败"));
     } finally {

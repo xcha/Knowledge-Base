@@ -3,32 +3,14 @@ import { ChatOpenAI } from '@langchain/openai';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { Response } from 'express';
 
-export type ModelProvider = 'claude' | 'openai' | 'deepseek';
+/** 默认模型 */
+const DEFAULT_MODEL = 'mimo-v2.5';
 
-export interface ModelConfig {
-  provider: ModelProvider;
-  model: string;
-  label: string;
-}
+/** 创建 LLM 实例（默认使用 mimo-v2.5） */
+export function createLlm(_modelName?: string): BaseChatModel {
+  const model = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
 
-// 支持的模型列表
-export const AVAILABLE_MODELS: ModelConfig[] = [
-  { provider: 'claude', model: 'claude-sonnet-4-6', label: 'Claude Sonnet' },
-  {
-    provider: 'claude',
-    model: 'claude-haiku-4-5-20251001',
-    label: 'Claude Haiku',
-  },
-  { provider: 'openai', model: 'gpt-4o', label: 'GPT-4o' },
-  { provider: 'openai', model: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-  { provider: 'deepseek', model: 'deepseek-chat', label: 'DeepSeek V3' },
-];
-
-/** 根据模型名称创建 LLM 实例 */
-export function createLlm(modelName?: string): BaseChatModel {
-  const model = modelName || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
-
-  // DeepSeek（兼容 OpenAI 接口）
+  // DeepSeek
   if (model.startsWith('deepseek')) {
     return new ChatOpenAI({
       openAIApiKey: process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY,
@@ -47,7 +29,7 @@ export function createLlm(modelName?: string): BaseChatModel {
     });
   }
 
-  // Claude（默认）
+  // 默认：通过 Anthropic 兼容接口调用（支持 mimo、claude 等）
   return new ChatAnthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
     model,
@@ -55,8 +37,7 @@ export function createLlm(modelName?: string): BaseChatModel {
       baseURL: process.env.ANTHROPIC_BASE_URL,
       defaultHeaders: {
         Authorization: `Bearer ${process.env.ANTHROPIC_API_KEY}`,
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0',
       },
     },
   });

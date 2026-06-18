@@ -17,12 +17,12 @@ export declare class KnowledgeService {
     }>;
     createKnowledgeBase(userId: string, name: string, description?: string): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         userId: string;
-        teamId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        teamId: string | null;
     }>;
     listKnowledgeBases(userId: string): Promise<({
         team: {
@@ -34,33 +34,33 @@ export declare class KnowledgeService {
         };
     } & {
         id: string;
-        name: string;
-        description: string | null;
         userId: string;
-        teamId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        teamId: string | null;
     })[]>;
     renameKnowledgeBase(id: string, userId: string, name: string): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         userId: string;
-        teamId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        teamId: string | null;
     }>;
     updateKnowledgeBase(id: string, userId: string, data: {
         name?: string;
         description?: string;
     }): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         userId: string;
-        teamId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        teamId: string | null;
     }>;
     deleteKnowledgeBase(id: string, userId: string): Promise<void>;
     uploadDocument(knowledgeBaseId: string, userId: string, file: Express.Multer.File, content: string, tags?: string): Promise<{
@@ -77,6 +77,7 @@ export declare class KnowledgeService {
     } & {
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -85,12 +86,12 @@ export declare class KnowledgeService {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     })[]>;
     getAllFolders(knowledgeBaseId: string, userId: string): Promise<FolderNode>;
     updateDocumentFolder(documentId: string, userId: string, folder: string): Promise<{
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -99,12 +100,12 @@ export declare class KnowledgeService {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     }>;
     getAllTags(knowledgeBaseId: string, userId: string): Promise<string[]>;
     updateDocumentTags(documentId: string, userId: string, tags: string): Promise<{
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -113,7 +114,6 @@ export declare class KnowledgeService {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     }>;
     hybridSearch(knowledgeBaseId: string, userId: string, query: string, topK?: number): Promise<{
         query: string;
@@ -166,6 +166,7 @@ export declare class KnowledgeService {
     renameDocument(documentId: string, userId: string, newName: string): Promise<{
         id: string;
         createdAt: Date;
+        knowledgeBaseId: string;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -174,7 +175,6 @@ export declare class KnowledgeService {
         folder: string;
         version: number;
         parentDocumentId: string | null;
-        knowledgeBaseId: string;
     }>;
     updateDocumentContent(documentId: string, userId: string, content: string): Promise<{
         chunkCount: number;
