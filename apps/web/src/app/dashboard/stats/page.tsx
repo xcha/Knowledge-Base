@@ -95,15 +95,25 @@ export default function StatsPage() {
             return (
               <Card key={c.label} className="card-hover">
                 <CardContent className="p-5 text-center">
-                  <div className={`size-10 mx-auto mb-3 rounded-xl flex items-center justify-center ${
-                    i === 0 ? 'bg-blue-50' : i === 1 ? 'bg-green-50' : i === 2 ? 'bg-purple-50' : 'bg-orange-50'
-                  }`}>
+                  <div
+                    className={`size-10 mx-auto mb-3 rounded-xl flex items-center justify-center ${
+                      i === 0
+                        ? "bg-blue-50"
+                        : i === 1
+                          ? "bg-green-50"
+                          : i === 2
+                            ? "bg-purple-50"
+                            : "bg-orange-50"
+                    }`}
+                  >
                     <Icon className={`size-5 ${COLORS[i]}`} />
                   </div>
                   <p className="text-2xl font-bold text-foreground">
                     {c.value}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">{c.label}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {c.label}
+                  </p>
                 </CardContent>
               </Card>
             );

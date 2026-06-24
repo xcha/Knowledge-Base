@@ -8,9 +8,9 @@ export declare class ChatController {
     constructor(chatService: ChatService);
     createSession(kbId: string, req: AuthRequest, dto: CreateSessionDto): Promise<{
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string | null;
         knowledgeBaseId: string;
     }>;
     listSessions(kbId: string, req: AuthRequest): Promise<({
@@ -19,18 +19,18 @@ export declare class ChatController {
         };
     } & {
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string | null;
         knowledgeBaseId: string;
     })[]>;
     renameSession(kbId: string, sessionId: string, req: AuthRequest, body: {
         title: string;
     }): Promise<{
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string | null;
         knowledgeBaseId: string;
     }>;
     deleteSession(kbId: string, sessionId: string, req: AuthRequest): Promise<void>;
@@ -47,10 +47,10 @@ export declare class ChatController {
         comment?: string;
     }): Promise<{
         id: string;
+        type: string;
         userId: string;
         createdAt: Date;
         messageId: string;
-        type: string;
         comment: string | null;
     }>;
     getFeedback(msgId: string): Promise<{
@@ -59,10 +59,10 @@ export declare class ChatController {
         total: number;
         list: {
             id: string;
+            type: string;
             userId: string;
             createdAt: Date;
             messageId: string;
-            type: string;
             comment: string | null;
         }[];
     }>;

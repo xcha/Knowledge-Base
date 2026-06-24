@@ -12,9 +12,9 @@ export declare class ChatService {
     constructor(prisma: PrismaService, vector: VectorService, knowledge: KnowledgeService, tokenUsage: TokenUsageService);
     createSession(knowledgeBaseId: string, userId: string, title?: string): Promise<{
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string | null;
         knowledgeBaseId: string;
     }>;
     listSessions(knowledgeBaseId: string, userId: string): Promise<({
@@ -23,9 +23,9 @@ export declare class ChatService {
         };
     } & {
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string | null;
         knowledgeBaseId: string;
     })[]>;
     getSessionMessages(sessionId: string, userId: string, kbId: string): Promise<{
@@ -37,18 +37,18 @@ export declare class ChatService {
     }[]>;
     renameSession(sessionId: string, userId: string, kbId: string, title: string): Promise<{
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string | null;
         knowledgeBaseId: string;
     }>;
     deleteSession(sessionId: string, userId: string, kbId: string): Promise<void>;
     feedbackMessage(messageId: string, userId: string, type: 'like' | 'dislike', comment?: string): Promise<{
         id: string;
+        type: string;
         userId: string;
         createdAt: Date;
         messageId: string;
-        type: string;
         comment: string | null;
     }>;
     getMessageFeedback(messageId: string): Promise<{
@@ -57,10 +57,10 @@ export declare class ChatService {
         total: number;
         list: {
             id: string;
+            type: string;
             userId: string;
             createdAt: Date;
             messageId: string;
-            type: string;
             comment: string | null;
         }[];
     }>;

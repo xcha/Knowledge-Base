@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -32,8 +37,12 @@ export class TeamService {
     return this.prisma.team.findUnique({
       where: { id: teamId },
       include: {
-        members: { include: { user: { select: { id: true, email: true, name: true } } } },
-        knowledgeBases: { include: { _count: { select: { documents: true } } } },
+        members: {
+          include: { user: { select: { id: true, email: true, name: true } } },
+        },
+        knowledgeBases: {
+          include: { _count: { select: { documents: true } } },
+        },
       },
     });
   }
@@ -45,7 +54,8 @@ export class TeamService {
     const targetUser = await this.prisma.user.findUnique({
       where: { email: targetEmail },
     });
-    if (!targetUser) throw new NotFoundException('用户不存在，请确认邮箱是否正确');
+    if (!targetUser)
+      throw new NotFoundException('用户不存在，请确认邮箱是否正确');
 
     const existing = await this.prisma.teamMember.findUnique({
       where: { teamId_userId: { teamId, userId: targetUser.id } },
@@ -64,7 +74,8 @@ export class TeamService {
       where: { teamId_userId: { teamId, userId: targetUserId } },
     });
     if (!target) throw new NotFoundException('成员不存在');
-    if (target.role === 'owner') throw new BadRequestException('不能移除团队创建者');
+    if (target.role === 'owner')
+      throw new BadRequestException('不能移除团队创建者');
     return this.prisma.teamMember.delete({ where: { id: target.id } });
   }
 
