@@ -45,10 +45,10 @@ export declare class ChatService {
     deleteSession(sessionId: string, userId: string, kbId: string): Promise<void>;
     feedbackMessage(messageId: string, userId: string, type: 'like' | 'dislike', comment?: string): Promise<{
         id: string;
-        type: string;
-        userId: string;
         createdAt: Date;
         messageId: string;
+        userId: string;
+        type: string;
         comment: string | null;
     }>;
     getMessageFeedback(messageId: string): Promise<{
@@ -57,10 +57,10 @@ export declare class ChatService {
         total: number;
         list: {
             id: string;
-            type: string;
-            userId: string;
             createdAt: Date;
             messageId: string;
+            userId: string;
+            type: string;
             comment: string | null;
         }[];
     }>;

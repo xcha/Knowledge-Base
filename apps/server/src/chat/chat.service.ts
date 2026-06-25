@@ -4,7 +4,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { VectorService } from '../vector/vector.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { TokenUsageService } from '../common/token-usage.service';
-import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
+import {
+  HumanMessage,
+  AIMessage,
+  SystemMessage,
+} from '@langchain/core/messages';
 import { createLlm, setupSseHeaders, sendSse } from '../common/llm.provider';
 
 @Injectable()
@@ -44,7 +48,12 @@ export class ChatService {
     });
   }
 
-  async renameSession(sessionId: string, userId: string, kbId: string, title: string) {
+  async renameSession(
+    sessionId: string,
+    userId: string,
+    kbId: string,
+    title: string,
+  ) {
     await this.knowledge.checkKbAccess(kbId, userId);
     return this.prisma.chatSession.update({
       where: { id: sessionId },
@@ -100,7 +109,9 @@ export class ChatService {
     const tokenCheck = await this.tokenUsage.checkTokenLimit(userId);
     if (!tokenCheck.allowed) {
       setupSseHeaders(res);
-      sendSse(res, { error: `本月 Token 用量已达到上限（${tokenCheck.used.toLocaleString()} / ${tokenCheck.limit.toLocaleString()}），请升级会员或下月再试` });
+      sendSse(res, {
+        error: `本月 Token 用量已达到上限（${tokenCheck.used.toLocaleString()} / ${tokenCheck.limit.toLocaleString()}），请升级会员或下月再试`,
+      });
       res.end();
       return;
     }
@@ -138,9 +149,7 @@ export class ChatService {
     );
 
     // 3. 将检索到的文档块拼接为上下文
-    const kbContext = retrieved.documents
-      .filter(Boolean)
-      .join('\n\n---\n\n');
+    const kbContext = retrieved.documents.filter(Boolean).join('\n\n---\n\n');
 
     // 4. 如果开启了联网搜索，同时搜索互联网
     let webContext = '';
@@ -187,7 +196,8 @@ ${kbContext}`;
 
     // 7. 流式调用 LLM，逐 token 推送给前端
     const llm = createLlm(model);
-    const modelName = model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
+    const modelName =
+      model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
     let fullContent = '';
     let inputTokens = 0;
     let outputTokens = 0;
@@ -220,8 +230,11 @@ ${kbContext}`;
       // 记录 token 用量（估算：问题 token 约为输入 token 的一部分）
       if (inputTokens > 0 || outputTokens > 0) {
         const estimatedInput = inputTokens || Math.ceil(fullContent.length / 3);
-        const estimatedOutput = outputTokens || Math.ceil(fullContent.length / 3);
-        this.tokenUsage.record(userId, modelName, estimatedInput, estimatedOutput).catch(() => null);
+        const estimatedOutput =
+          outputTokens || Math.ceil(fullContent.length / 3);
+        this.tokenUsage
+          .record(userId, modelName, estimatedInput, estimatedOutput)
+          .catch(() => null);
       }
 
       sendSse(res, { done: true });

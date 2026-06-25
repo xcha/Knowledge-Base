@@ -47,10 +47,10 @@ export declare class ChatController {
         comment?: string;
     }): Promise<{
         id: string;
-        type: string;
-        userId: string;
         createdAt: Date;
         messageId: string;
+        userId: string;
+        type: string;
         comment: string | null;
     }>;
     getFeedback(msgId: string): Promise<{
@@ -59,10 +59,10 @@ export declare class ChatController {
         total: number;
         list: {
             id: string;
-            type: string;
-            userId: string;
             createdAt: Date;
             messageId: string;
+            userId: string;
+            type: string;
             comment: string | null;
         }[];
     }>;

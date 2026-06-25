@@ -88,7 +88,9 @@ let ChatService = ChatService_1 = class ChatService {
         const tokenCheck = await this.tokenUsage.checkTokenLimit(userId);
         if (!tokenCheck.allowed) {
             (0, llm_provider_1.setupSseHeaders)(res);
-            (0, llm_provider_1.sendSse)(res, { error: `本月 Token 用量已达到上限（${tokenCheck.used.toLocaleString()} / ${tokenCheck.limit.toLocaleString()}），请升级会员或下月再试` });
+            (0, llm_provider_1.sendSse)(res, {
+                error: `本月 Token 用量已达到上限（${tokenCheck.used.toLocaleString()} / ${tokenCheck.limit.toLocaleString()}），请升级会员或下月再试`,
+            });
             res.end();
             return;
         }
@@ -112,9 +114,7 @@ let ChatService = ChatService_1 = class ChatService {
         });
         const queryVec = await this.knowledge.getEmbedding(actualQuestion);
         const retrieved = await this.vector.query(`kb_${session.knowledgeBaseId}`, queryVec, 5);
-        const kbContext = retrieved.documents
-            .filter(Boolean)
-            .join('\n\n---\n\n');
+        const kbContext = retrieved.documents.filter(Boolean).join('\n\n---\n\n');
         let webContext = '';
         if (enableWebSearch) {
             try {
@@ -174,7 +174,9 @@ ${kbContext}`;
             if (inputTokens > 0 || outputTokens > 0) {
                 const estimatedInput = inputTokens || Math.ceil(fullContent.length / 3);
                 const estimatedOutput = outputTokens || Math.ceil(fullContent.length / 3);
-                this.tokenUsage.record(userId, modelName, estimatedInput, estimatedOutput).catch(() => null);
+                this.tokenUsage
+                    .record(userId, modelName, estimatedInput, estimatedOutput)
+                    .catch(() => null);
             }
             (0, llm_provider_1.sendSse)(res, { done: true });
         }

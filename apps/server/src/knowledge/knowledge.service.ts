@@ -639,7 +639,8 @@ export class KnowledgeService {
       if (match) {
         const topic = match[1].replace(/^[，,、：:；;""]+/, '').trim();
         if (topic.length >= 3 && topic.length <= 25) {
-          const template = questionTemplates[questions.length % questionTemplates.length];
+          const template =
+            questionTemplates[questions.length % questionTemplates.length];
           const q = template(topic);
           if (!questions.includes(q)) {
             questions.push(q);
