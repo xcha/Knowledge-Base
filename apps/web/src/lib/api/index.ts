@@ -4,6 +4,8 @@ export { chatApi } from './chat';
 export { userApi } from './user';
 export { paymentApi } from './payment';
 export { teamApi } from './team';
+export { tokenUsageApi } from './token-usage';
+export type { TokenUsageStats } from './token-usage';
 
 export type {
   User, UserProfile, KnowledgeBase, Document, DocVersion,

@@ -18,14 +18,10 @@ const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const chat_service_1 = require("./chat.service");
 const create_session_dto_1 = require("./dto/create-session.dto");
 const send_message_dto_1 = require("./dto/send-message.dto");
-const llm_provider_1 = require("../common/llm.provider");
 let ChatController = class ChatController {
     chatService;
     constructor(chatService) {
         this.chatService = chatService;
-    }
-    getModels() {
-        return llm_provider_1.AVAILABLE_MODELS;
     }
     createSession(kbId, req, dto) {
         return this.chatService.createSession(kbId, req.user.id, dto.title);
@@ -53,12 +49,6 @@ let ChatController = class ChatController {
     }
 };
 exports.ChatController = ChatController;
-__decorate([
-    (0, common_1.Get)('models'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], ChatController.prototype, "getModels", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Param)('kbId')),

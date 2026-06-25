@@ -21,6 +21,10 @@ const payment_module_1 = require("./payment/payment.module");
 const user_module_1 = require("./user/user.module");
 const team_module_1 = require("./team/team.module");
 const sms_module_1 = require("./sms/sms.module");
+const mail_module_1 = require("./mail/mail.module");
+const admin_module_1 = require("./admin/admin.module");
+const token_usage_service_1 = require("./common/token-usage.service");
+const token_usage_controller_1 = require("./common/token-usage.controller");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -38,9 +42,12 @@ exports.AppModule = AppModule = __decorate([
             user_module_1.UserModule,
             team_module_1.TeamModule,
             sms_module_1.SmsModule,
+            mail_module_1.MailModule,
+            admin_module_1.AdminModule,
         ],
-        controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        controllers: [app_controller_1.AppController, token_usage_controller_1.TokenUsageController],
+        providers: [app_service_1.AppService, token_usage_service_1.TokenUsageService],
+        exports: [token_usage_service_1.TokenUsageService],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

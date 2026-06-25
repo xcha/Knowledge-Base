@@ -18,6 +18,7 @@ model User {
   name                String?
   phone               String?         @unique
   phoneVerified       Boolean         @default(false)
+  role                String          @default("user") // user | admin
   membership          String          @default("free")
   membershipExpiresAt DateTime?
   maxKnowledgeBases   Int             @default(3)
@@ -27,6 +28,7 @@ model User {
   knowledgeBases      KnowledgeBase[]
   ownedTeams          Team[]          @relation("TeamOwner")
   teamMembers         TeamMember[]
+  paymentOrders       PaymentOrder[]
 }
 
 model Team {
@@ -74,6 +76,7 @@ model RefreshToken {
 model PaymentOrder {
   id            String   @id @default(cuid())
   userId        String
+  user          User     @relation(fields: [userId], references: [id])
   outTradeNo    String   @unique // 商户订单号，唯一，回调用
   subject       String   // 商品名称，如 "Pro会员-1个月"
   totalAmount   String   // 金额，字符串避免浮点精度问题
@@ -151,4 +154,22 @@ model ChatMessage {
   sessionId String
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+model TokenUsage {
+  id          String   @id @default(cuid())
+  userId      String
+  model       String   // 使用的模型名称
+  inputTokens Int      @default(0)
+  outputTokens Int     @default(0)
+  totalTokens Int      @default(0)
+  estimatedCost Float @default(0) // 预估费用（美元）
+  createdAt   DateTime @default(now())
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
 }

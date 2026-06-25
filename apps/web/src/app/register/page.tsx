@@ -30,6 +30,13 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
+  const [emailCode, setEmailCode] = useState("");
+  const [emailCaptchaSvg, setEmailCaptchaSvg] = useState("");
+  const [emailCaptchaId, setEmailCaptchaId] = useState("");
+  const [emailCaptchaInput, setEmailCaptchaInput] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailCountdown, setEmailCountdown] = useState(0);
+  const emailCaptchaRef = useRef<HTMLDivElement>(null);
 
   // 手机号注册
   const [phone, setPhone] = useState("");
@@ -52,6 +59,55 @@ export default function RegisterPage() {
       setCaptchaInput("");
     } catch {
       setError("获取验证码失败");
+    }
+  }
+
+  async function refreshEmailCaptcha() {
+    try {
+      const url = authApi.getCaptchaUrl();
+      const res = await fetch(url);
+      const svg = await res.text();
+      setEmailCaptchaSvg(svg);
+      setEmailCaptchaId(res.headers.get("X-Captcha-Id") ?? "");
+      setEmailCaptchaInput("");
+    } catch {
+      setError("获取验证码失败");
+    }
+  }
+
+  async function handleSendEmailCode() {
+    if (emailCountdown > 0 || sendingEmail) return;
+    if (!email) {
+      setError("请输入邮箱");
+      return;
+    }
+    if (!emailCaptchaInput) {
+      setError("请输入图片验证码");
+      return;
+    }
+
+    setSendingEmail(true);
+    setError("");
+    try {
+      const res = await authApi.sendEmailCode(email, emailCaptchaId, emailCaptchaInput);
+      if (res.data.success) {
+        setEmailCountdown(60);
+        const timer = setInterval(() => {
+          setEmailCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setError(res.data.message ?? "发送失败");
+      }
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "发送失败"));
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -96,7 +152,7 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await authApi.register(email, emailPassword, name);
+      const res = await authApi.register(email, emailPassword, name, emailCode);
       setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       router.push("/dashboard");
     } catch (err: unknown) {
@@ -184,6 +240,7 @@ export default function RegisterPage() {
               setTab(v as "email" | "phone");
               setError("");
               if (v === "phone") refreshCaptcha();
+              if (v === "email") refreshEmailCaptcha();
             }}
           >
             <TabsList className="w-full mb-6">
@@ -219,6 +276,59 @@ export default function RegisterPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-11"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email-captcha">图片验证码</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="email-captcha"
+                      type="text"
+                      maxLength={4}
+                      value={emailCaptchaInput}
+                      onChange={(e) => setEmailCaptchaInput(e.target.value)}
+                      placeholder="输入验证码"
+                      className="flex-1 h-11"
+                    />
+                    <div
+                      ref={emailCaptchaRef}
+                      onClick={refreshEmailCaptcha}
+                      className="w-28 h-11 flex items-center justify-center bg-muted rounded-md cursor-pointer overflow-hidden shrink-0"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          emailCaptchaSvg ||
+                          '<span class="text-xs text-muted-foreground">点击获取</span>',
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email-code">邮箱验证码</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="email-code"
+                      type="text"
+                      maxLength={6}
+                      value={emailCode}
+                      onChange={(e) =>
+                        setEmailCode(e.target.value.replace(/\D/g, ""))
+                      }
+                      placeholder="输入 6 位验证码"
+                      className="flex-1 h-11"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSendEmailCode}
+                      disabled={sendingEmail || emailCountdown > 0}
+                      className="w-28 shrink-0 h-11"
+                    >
+                      {emailCountdown > 0
+                        ? `${emailCountdown}s`
+                        : sendingEmail
+                          ? "发送中"
+                          : "获取验证码"}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reg-password">密码</Label>

@@ -8,9 +8,9 @@ import {
   type ChatSession,
   type ChatMessage,
   type FeedbackData,
-  type ModelInfo,
 } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import Markdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +30,16 @@ import {
   Download,
   Sparkles,
   RefreshCw,
+  Bot,
+  Sparkles as SparklesIcon,
+  AtSign,
+  SlidersHorizontal,
+  Globe,
+  FileText,
+  Network,
+  Pen,
+  Mic,
+  MicOff,
 } from "lucide-react";
 
 type Mode = "rag" | "agent";
@@ -42,6 +52,12 @@ const TOOL_LABELS: Record<string, string> = {
   search_knowledge: "检索知识库",
   get_document_list: "获取文档列表",
 };
+
+const SKILLS = [
+  { id: "mindmap", label: "思维导图", description: "生成知识结构图", icon: Network },
+  { id: "summary", label: "文档摘要", description: "总结文档核心内容", icon: FileText },
+  { id: "rewrite", label: "改写润色", description: "优化文本表达", icon: Pen },
+];
 
 export default function ChatPage({
   params,
@@ -63,10 +79,13 @@ export default function ChatPage({
   );
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>("");
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [loadingSuggested, setLoadingSuggested] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState<string>("");
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [showSkillsMenu, setShowSkillsMenu] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function selectSession(sessionId: string) {
@@ -80,18 +99,6 @@ export default function ChatPage({
     setSessions(res.data);
     if (res.data.length > 0 && !activeSession) {
       selectSession(res.data[0].id);
-    }
-  }
-
-  async function fetchModels() {
-    try {
-      const res = await chatApi.getModels(kbId);
-      setModels(res.data);
-      if (res.data.length > 0 && !selectedModel) {
-        setSelectedModel(res.data[0].model);
-      }
-    } catch {
-      // 静默失败，使用默认模型
     }
   }
 
@@ -109,13 +116,74 @@ export default function ChatPage({
 
   useEffect(() => {
     fetchSessions();
-    fetchModels();
     fetchSuggestedQuestions();
   }, [kbId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingText]);
+
+  // 点击外部关闭技能菜单
+  useEffect(() => {
+    function handleClickOutside() {
+      setShowSkillsMenu(false);
+    }
+    if (showSkillsMenu) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [showSkillsMenu]);
+
+  // 语音输入
+  function toggleVoiceInput() {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("当前浏览器不支持语音输入，请使用 Chrome");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "zh-CN";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput((prev) => {
+        // 只追加新增的部分
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult.isFinal) {
+          return prev + lastResult[0].transcript;
+        }
+        return prev;
+      });
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("语音识别错误:", event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  }
 
   async function createSession() {
     const res = await chatApi.createSession(kbId);
@@ -173,13 +241,18 @@ export default function ChatPage({
         ? `${base}/knowledge/${kbId}/sessions/${activeSession}/chat`
         : `${base}/knowledge/${kbId}/agent/chat`;
 
+    const skillPrompt = selectedSkill
+      ? `[使用${SKILLS.find((s) => s.id === selectedSkill)?.label}技能] `
+      : "";
+    const webPrompt = webSearchEnabled ? "[联网搜索] " : "";
+    const fullQuestion = `${skillPrompt}${webPrompt}${question}`;
+
     const body =
       mode === "rag"
-        ? { question, model: selectedModel || undefined }
+        ? { question: fullQuestion }
         : {
-            question,
+            question: fullQuestion,
             sessionId: activeSession,
-            model: selectedModel || undefined,
           };
 
     try {
@@ -291,31 +364,18 @@ export default function ChatPage({
               <Download className="size-4" /> 导出
             </Button>
           )}
-          {models.length > 0 && (
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="h-8 px-2 text-xs rounded-md border border-border bg-background text-foreground"
-            >
-              {models.map((m) => (
-                <option key={m.model} value={m.model}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          )}
           <ToggleGroup
             value={[mode]}
             onValueChange={(v: string[]) => {
               if (v.length > 0) setMode(v[0] as Mode);
             }}
           >
-            <ToggleGroupItem value="rag" className="text-xs">
+            {/* <ToggleGroupItem value="rag" className="text-xs">
               RAG 模式
             </ToggleGroupItem>
             <ToggleGroupItem value="agent" className="text-xs">
               Agent 模式
-            </ToggleGroupItem>
+            </ToggleGroupItem> */}
           </ToggleGroup>
         </div>
       </header>
@@ -379,16 +439,21 @@ export default function ChatPage({
           </ScrollArea>
         </aside>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-y-auto">
           {!activeSession ? (
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="max-w-lg w-full text-center space-y-6">
                 <Sparkles className="size-10 mx-auto text-primary/60" />
-                <h3 className="text-lg font-medium text-foreground">猜你想问</h3>
+                <h3 className="text-lg font-medium text-foreground">
+                  猜你想问
+                </h3>
                 {loadingSuggested ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+                      <div
+                        key={i}
+                        className="h-12 rounded-lg bg-muted animate-pulse"
+                      />
                     ))}
                   </div>
                 ) : suggestedQuestions.length > 0 ? (
@@ -400,7 +465,10 @@ export default function ChatPage({
                         className="w-full justify-start text-left h-auto py-3 px-4 text-sm whitespace-normal card-hover"
                         onClick={async () => {
                           // 创建新会话，以问题前30字作为标题
-                          const res = await chatApi.createSession(kbId, q.slice(0, 30));
+                          const res = await chatApi.createSession(
+                            kbId,
+                            q.slice(0, 30),
+                          );
                           setSessions((prev) => [res.data, ...prev]);
                           setActiveSession(res.data.id);
                           setMessages([]);
@@ -421,7 +489,9 @@ export default function ChatPage({
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">上传文档后即可生成推荐问题</p>
+                  <p className="text-sm text-muted-foreground">
+                    上传文档后即可生成推荐问题
+                  </p>
                 )}
               </div>
             </div>
@@ -435,13 +505,19 @@ export default function ChatPage({
                       className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                        className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm ${
                           msg.role === "user"
-                            ? "bg-primary text-primary-foreground"
+                            ? "bg-primary text-primary-foreground whitespace-pre-wrap"
                             : "bg-background border border-border text-foreground"
                         }`}
                       >
-                        {msg.content}
+                        {msg.role === "user" ? (
+                          msg.content
+                        ) : (
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <Markdown>{msg.content}</Markdown>
+                          </div>
+                        )}
                         {msg.role === "assistant" && (
                           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
                             <Button
@@ -501,8 +577,10 @@ export default function ChatPage({
 
                   {streamingText && (
                     <div className="flex justify-start">
-                      <div className="max-w-[70%] rounded-2xl px-4 py-2.5 text-sm bg-background border border-border text-foreground whitespace-pre-wrap">
-                        {streamingText}
+                      <div className="max-w-[70%] rounded-2xl px-4 py-2.5 text-sm bg-background border border-border text-foreground">
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <Markdown>{streamingText}</Markdown>
+                        </div>
                         <span className="inline-block w-1 h-4 bg-muted-foreground ml-0.5 animate-pulse" />
                       </div>
                     </div>
@@ -511,35 +589,123 @@ export default function ChatPage({
                 </div>
               </ScrollArea>
 
-              <div className="border-t border-border bg-background px-4 py-3 flex gap-2 shrink-0">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                  placeholder={
-                    mode === "agent"
-                      ? "Agent 模式：AI 会自主决定是否检索知识库"
-                      : "输入问题，Enter 发送，Shift+Enter 换行"
-                  }
-                  rows={1}
-                  className="flex-1 resize-none"
-                />
-                <Button
-                  onClick={sendMessage}
-                  disabled={streaming || !input.trim()}
-                >
-                  {streaming ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Send className="size-4" />
-                  )}
-                  {streaming ? "" : "发送"}
-                </Button>
+              <div className="shrink-0 p-4 sticky bottom-0">
+                <div className="border border-border rounded-2xl bg-background shadow-sm ">
+                  {/* 输入区 */}
+                  <Textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="告诉我想做什么，我来规划执行——查询知识、生成PPT、撰写报告、整理知识库......"
+                    rows={1}
+                    className="w-full resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-4 pt-4 pb-2 text-sm placeholder:text-muted-foreground/60"
+                  />
+                  {/* 底部工具栏 */}
+                  <div className="flex items-center justify-between px-3 pb-3 pt-1">
+                    <div className="flex items-center gap-1 relative">
+                      <button
+                        onClick={() => setMode(mode === "agent" ? "rag" : "agent")}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          mode === "agent"
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Bot className="size-3.5" />
+                        {mode === "agent" ? "Agent模式" : "RAG模式"}
+                      </button>
+
+                      {/* 技能下拉菜单 */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowSkillsMenu(!showSkillsMenu)}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition ${
+                            selectedSkill
+                              ? "bg-primary/10 text-primary border border-primary/20"
+                              : "text-muted-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <SparklesIcon className="size-3.5" />
+                          技能{selectedSkill ? `: ${SKILLS.find(s => s.id === selectedSkill)?.label}` : ""}
+                        </button>
+                        {showSkillsMenu && (
+                          <div
+                            className="absolute bottom-full mb-2 left-0 bg-background border border-border rounded-xl shadow-lg p-2 min-w-[200px] z-50"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {SKILLS.map((skill) => (
+                              <button
+                                key={skill.id}
+                                onClick={() => {
+                                  setSelectedSkill(selectedSkill === skill.id ? "" : skill.id);
+                                  setShowSkillsMenu(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-left ${
+                                  selectedSkill === skill.id
+                                    ? "bg-primary/10 text-primary"
+                                    : "hover:bg-muted text-foreground"
+                                }`}
+                              >
+                                <skill.icon className="size-4 shrink-0" />
+                                <div>
+                                  <p className="font-medium">{skill.label}</p>
+                                  <p className="text-xs text-muted-foreground">{skill.description}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 联网搜索开关 */}
+                      <button
+                        onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition ${
+                          webSearchEnabled
+                            ? "bg-blue-50 text-blue-600 border border-blue-200"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Globe className="size-3.5" />
+                        联网搜索
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {/* 语音输入按钮 */}
+                      <button
+                        onClick={toggleVoiceInput}
+                        className={`p-2 rounded-full transition ${
+                          isRecording
+                            ? "bg-red-500 text-white animate-pulse"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                        title={isRecording ? "停止录音" : "语音输入"}
+                      >
+                        {isRecording ? (
+                          <MicOff className="size-4" />
+                        ) : (
+                          <Mic className="size-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={sendMessage}
+                        disabled={streaming || !input.trim()}
+                        className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {streaming ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Send className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </>
           )}

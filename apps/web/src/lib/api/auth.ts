@@ -8,11 +8,12 @@ export interface AuthResponse {
 }
 
 export const authApi = {
-  register: (email: string, password: string, name?: string) =>
+  register: (email: string, password: string, name?: string, emailCode?: string) =>
     post<AuthResponse>("/auth/register", {
       email,
       password,
       name,
+      emailCode: emailCode || undefined,
     }),
 
   login: (email: string, password: string) =>
@@ -24,6 +25,13 @@ export const authApi = {
   sendSms: (phone: string, captchaId?: string, captchaAnswer?: string) =>
     post<{ success: boolean; message?: string }>("/auth/send-sms", {
       phone,
+      captchaId,
+      captchaAnswer,
+    }),
+
+  sendEmailCode: (email: string, captchaId?: string, captchaAnswer?: string) =>
+    post<{ success: boolean; message?: string }>("/auth/send-email-code", {
+      email,
       captchaId,
       captchaAnswer,
     }),

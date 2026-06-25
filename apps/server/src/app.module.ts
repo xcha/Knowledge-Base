@@ -12,6 +12,10 @@ import { PaymentModule } from './payment/payment.module';
 import { UserModule } from './user/user.module';
 import { TeamModule } from './team/team.module';
 import { SmsModule } from './sms/sms.module';
+import { MailModule } from './mail/mail.module';
+import { AdminModule } from './admin/admin.module';
+import { TokenUsageService } from './common/token-usage.service';
+import { TokenUsageController } from './common/token-usage.controller';
 
 @Module({
   imports: [
@@ -26,8 +30,11 @@ import { SmsModule } from './sms/sms.module';
     UserModule,
     TeamModule,
     SmsModule,
+    MailModule,
+    AdminModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, TokenUsageController],
+  providers: [AppService, TokenUsageService],
+  exports: [TokenUsageService],
 })
 export class AppModule {}

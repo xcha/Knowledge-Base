@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SendSmsDto } from './dto/send-sms.dto';
+import { SendEmailCodeDto } from './dto/send-email-code.dto';
 import { RegisterPhoneDto } from './dto/register-phone.dto';
 import { RefreshDto } from './dto/refresh.dto';
 
@@ -30,9 +31,20 @@ export class AuthController {
     return this.auth.sendSmsCode(dto.phone, dto.type ?? 'register');
   }
 
+  @Post('send-email-code')
+  async sendEmailCode(@Body() dto: SendEmailCodeDto) {
+    if (dto.captchaId && dto.captchaAnswer) {
+      const valid = this.auth.verifyCaptcha(dto.captchaId, dto.captchaAnswer);
+      if (!valid) {
+        return { success: false, message: '图片验证码错误' };
+      }
+    }
+    return this.auth.sendEmailCode(dto.email, dto.type ?? 'register');
+  }
+
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto.email, dto.password, dto.name);
+    return this.auth.register(dto.email, dto.password, dto.name, dto.emailCode);
   }
 
   @Post('register-phone')

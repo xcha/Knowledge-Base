@@ -48,6 +48,7 @@ const jwt_1 = require("@nestjs/jwt");
 const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const sms_service_1 = require("../sms/sms.service");
+const mail_service_1 = require("../mail/mail.service");
 const bcrypt = __importStar(require("bcryptjs"));
 const svgCaptcha = __importStar(require("svg-captcha"));
 const crypto_1 = require("crypto");
@@ -63,11 +64,13 @@ let AuthService = class AuthService {
     prisma;
     jwt;
     sms;
+    mail;
     config;
-    constructor(prisma, jwt, sms, config) {
+    constructor(prisma, jwt, sms, mail, config) {
         this.prisma = prisma;
         this.jwt = jwt;
         this.sms = sms;
+        this.mail = mail;
         this.config = config;
     }
     generateCaptcha() {
@@ -133,6 +136,43 @@ let AuthService = class AuthService {
         });
         return true;
     }
+    async sendEmailCode(email, type = 'register') {
+        const recent = await this.prisma.smsCode.findFirst({
+            where: {
+                phone: email,
+                type: `email_${type}`,
+                createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+            },
+        });
+        if (recent)
+            throw new common_1.BadRequestException('发送过于频繁，请60秒后再试');
+        const code = String((0, crypto_1.randomInt)(100000, 1000000));
+        await this.prisma.smsCode.create({
+            data: {
+                phone: email,
+                code,
+                type: `email_${type}`,
+                expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            },
+        });
+        await this.mail.sendCode(email, code, type);
+        return { success: true };
+    }
+    async verifyEmailCode(email, code, type) {
+        const record = await this.prisma.smsCode.findFirst({
+            where: { phone: email, code, type: `email_${type}`, used: false },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (!record)
+            return false;
+        if (record.expiresAt < new Date())
+            return false;
+        await this.prisma.smsCode.update({
+            where: { id: record.id },
+            data: { used: true },
+        });
+        return true;
+    }
     async signTokenPair(userId, email) {
         const accessToken = this.jwt.sign({ sub: userId, email, type: 'access' }, { expiresIn: '15m' });
         const refreshToken = (0, crypto_1.randomBytes)(40).toString('hex');
@@ -172,7 +212,12 @@ let AuthService = class AuthService {
         });
         return { success: true };
     }
-    async register(email, password, name) {
+    async register(email, password, name, emailCode) {
+        if (emailCode) {
+            const valid = await this.verifyEmailCode(email, emailCode, 'register');
+            if (!valid)
+                throw new common_1.BadRequestException('邮箱验证码错误或已过期');
+        }
         const exists = await this.prisma.user.findUnique({ where: { email } });
         if (exists)
             throw new common_1.ConflictException('邮箱已被注册');
@@ -252,6 +297,7 @@ exports.AuthService = AuthService = __decorate([
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         jwt_1.JwtService,
         sms_service_1.SmsService,
+        mail_service_1.MailService,
         config_1.ConfigService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

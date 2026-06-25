@@ -6,13 +6,12 @@ import { SendMessageDto } from './dto/send-message.dto';
 export declare class ChatController {
     private chatService;
     constructor(chatService: ChatService);
-    getModels(): import("../common/llm.provider").ModelConfig[];
     createSession(kbId: string, req: AuthRequest, dto: CreateSessionDto): Promise<{
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
         knowledgeBaseId: string;
-        title: string | null;
     }>;
     listSessions(kbId: string, req: AuthRequest): Promise<({
         _count: {
@@ -20,19 +19,19 @@ export declare class ChatController {
         };
     } & {
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
         knowledgeBaseId: string;
-        title: string | null;
     })[]>;
     renameSession(kbId: string, sessionId: string, req: AuthRequest, body: {
         title: string;
     }): Promise<{
         id: string;
+        title: string | null;
         createdAt: Date;
         updatedAt: Date;
         knowledgeBaseId: string;
-        title: string | null;
     }>;
     deleteSession(kbId: string, sessionId: string, req: AuthRequest): Promise<void>;
     getMessages(kbId: string, sessionId: string, req: AuthRequest): Promise<{
@@ -48,10 +47,10 @@ export declare class ChatController {
         comment?: string;
     }): Promise<{
         id: string;
-        userId: string;
         createdAt: Date;
-        type: string;
         messageId: string;
+        userId: string;
+        type: string;
         comment: string | null;
     }>;
     getFeedback(msgId: string): Promise<{
@@ -60,10 +59,10 @@ export declare class ChatController {
         total: number;
         list: {
             id: string;
-            userId: string;
             createdAt: Date;
-            type: string;
             messageId: string;
+            userId: string;
+            type: string;
             comment: string | null;
         }[];
     }>;

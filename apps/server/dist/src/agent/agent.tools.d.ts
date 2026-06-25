@@ -17,4 +17,19 @@ export declare function buildAgentTools(knowledgeBaseId: string, knowledgeServic
     documentId: string;
 }, {
     documentId: string;
-}, string, unknown, "get_document_content">)[];
+}, string, unknown, "get_document_content"> | import("@langchain/core/tools").DynamicStructuredTool<z.ZodObject<{
+    query: z.ZodString;
+    maxResults: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>, {
+    query: string;
+    maxResults?: number | undefined;
+}, {
+    query: string;
+    maxResults?: number | undefined;
+}, string, unknown, "web_search"> | import("@langchain/core/tools").DynamicStructuredTool<z.ZodObject<{
+    topic: z.ZodString;
+}, z.core.$strip>, {
+    topic: string;
+}, {
+    topic: string;
+}, string, unknown, "generate_mind_map">)[];

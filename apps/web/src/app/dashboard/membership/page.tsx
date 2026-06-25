@@ -24,18 +24,19 @@ export default function MembershipPage() {
   const [paying, setPaying] = useState(false);
   const [result, setResult] = useState<string>('');
 
-  useEffect(() => { loadData(); }, []);
-
-  async function loadData() {
-    const [p, pricesRes, ordersRes] = await Promise.all([
-      userApi.getProfile(),
-      paymentApi.getPrices(),
-      paymentApi.listOrders(),
-    ]);
-    setProfile(p.data);
-    setPrices(pricesRes.data);
-    setOrders(ordersRes.data);
-  }
+  useEffect(() => {
+    async function load() {
+      const [p, pricesRes, ordersRes] = await Promise.all([
+        userApi.getProfile(),
+        paymentApi.getPrices(),
+        paymentApi.listOrders(),
+      ]);
+      setProfile(p.data);
+      setPrices(pricesRes.data);
+      setOrders(ordersRes.data);
+    }
+    load();
+  }, []);
 
   async function handlePay() {
     if (!selectedPlan || paying) return;
@@ -45,10 +46,32 @@ export default function MembershipPage() {
       const orderRes = await paymentApi.createOrder(selectedPlan, selectedDuration);
       const { outTradeNo, totalAmount, payUrl } = orderRes.data;
 
-      // 如果有支付宝支付链接，跳转到支付宝
+      // 如果有支付宝支付表单，提交跳转
       if (payUrl) {
         setResult(`订单创建成功，正在跳转支付宝...`);
-        window.location.href = payUrl;
+
+        // 判断 payUrl 格式：
+        // 1. 纯 URL -> 直接跳转
+        // 2. HTML 表单 -> 插入 DOM 并提交
+        if (payUrl.startsWith('http')) {
+          window.location.href = payUrl;
+        } else {
+          // HTML 表单格式，插入 DOM 并提交
+          const container = document.createElement('div');
+          container.style.display = 'none';
+          container.innerHTML = payUrl;
+          document.body.appendChild(container);
+
+          const form = container.querySelector('form');
+          if (form) {
+            form.submit();
+          } else {
+            // 可能包含自动执行的脚本，等待跳转
+            setTimeout(() => {
+              setResult('跳转超时，请重试');
+            }, 5000);
+          }
+        }
         return;
       }
 
@@ -59,7 +82,15 @@ export default function MembershipPage() {
       setResult(
         `支付成功！已升级为 ${MEMBERSHIP_CN[cbRes.data.membership]}，到期日 ${new Date(cbRes.data.expiresAt).toLocaleDateString('zh-CN')}`,
       );
-      loadData();
+      // 刷新数据
+      const [p, pricesRes, ordersRes] = await Promise.all([
+        userApi.getProfile(),
+        paymentApi.getPrices(),
+        paymentApi.listOrders(),
+      ]);
+      setProfile(p.data);
+      setPrices(pricesRes.data);
+      setOrders(ordersRes.data);
     } catch (err: unknown) {
       setResult(getErrorMessage(err, '支付失败，请重试'));
     } finally {
@@ -126,6 +157,7 @@ export default function MembershipPage() {
               {[
                 { label: '知识库数量', free: '3', basic: '10', pro: '50' },
                 { label: '文档数量', free: '10', basic: '50', pro: '200' },
+                { label: '每月 Token', free: '10万', basic: '100万', pro: '1000万' },
               ].map((row) => (
                 <div key={row.label} className="text-sm">
                   <p className="text-muted-foreground mb-1">{row.label}</p>

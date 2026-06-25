@@ -18,6 +18,7 @@ const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
 const send_sms_dto_1 = require("./dto/send-sms.dto");
+const send_email_code_dto_1 = require("./dto/send-email-code.dto");
 const register_phone_dto_1 = require("./dto/register-phone.dto");
 const refresh_dto_1 = require("./dto/refresh.dto");
 let AuthController = class AuthController {
@@ -40,8 +41,17 @@ let AuthController = class AuthController {
         }
         return this.auth.sendSmsCode(dto.phone, dto.type ?? 'register');
     }
+    async sendEmailCode(dto) {
+        if (dto.captchaId && dto.captchaAnswer) {
+            const valid = this.auth.verifyCaptcha(dto.captchaId, dto.captchaAnswer);
+            if (!valid) {
+                return { success: false, message: '图片验证码错误' };
+            }
+        }
+        return this.auth.sendEmailCode(dto.email, dto.type ?? 'register');
+    }
     register(dto) {
-        return this.auth.register(dto.email, dto.password, dto.name);
+        return this.auth.register(dto.email, dto.password, dto.name, dto.emailCode);
     }
     registerPhone(dto) {
         return this.auth.registerByPhone(dto.phone, dto.smsCode, dto.password, dto.captchaId, dto.captchaAnswer);
@@ -71,6 +81,13 @@ __decorate([
     __metadata("design:paramtypes", [send_sms_dto_1.SendSmsDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "sendSms", null);
+__decorate([
+    (0, common_1.Post)('send-email-code'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [send_email_code_dto_1.SendEmailCodeDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "sendEmailCode", null);
 __decorate([
     (0, common_1.Post)('register'),
     __param(0, (0, common_1.Body)()),

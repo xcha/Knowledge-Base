@@ -22,6 +22,7 @@ import {
   Gem,
   LogOut,
   BookOpen,
+  Coins,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -105,6 +106,12 @@ export default function DashboardPage() {
           <Link href="/dashboard/stats">
             <BarChart3 className="size-4" />
             数据看板
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/dashboard/token-usage">
+            <Coins className="size-4" />
+            Token 用量
           </Link>
         </Button>
         <Button variant="ghost" size="sm" asChild>

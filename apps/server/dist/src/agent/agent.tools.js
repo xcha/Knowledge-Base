@@ -58,9 +58,57 @@ function buildAgentTools(knowledgeBaseId, knowledgeService, vectorService, prism
         name: 'get_document_content',
         description: '获取指定文档的完整文本内容。当用户要求"总结/概括/摘要某文档"或需要阅读文档全文时使用。先通过 get_document_list 获取文档 ID，再调用此工具。',
         schema: zod_1.z.object({
-            documentId: zod_1.z.string().describe('文档 ID，从 get_document_list 返回结果中获取'),
+            documentId: zod_1.z
+                .string()
+                .describe('文档 ID，从 get_document_list 返回结果中获取'),
         }),
     });
-    return [searchKnowledge, getDocumentList, getDocumentContent];
+    const webSearchTool = (0, tools_1.tool)(async ({ query, maxResults }) => {
+        try {
+            const { webSearch } = await import('../common/web-search.js');
+            const results = await webSearch(query, maxResults ?? 5);
+            if (!results.length)
+                return '未找到相关网页结果。';
+            return results
+                .map((r, i) => `[${i + 1}] ${r.title}\n${r.description}`)
+                .join('\n\n');
+        }
+        catch (err) {
+            return `搜索失败：${String(err)}`;
+        }
+    }, {
+        name: 'web_search',
+        description: '联网搜索互联网获取最新信息。当知识库中找不到答案，或问题涉及时事、最新资讯、公开信息时使用此工具。',
+        schema: zod_1.z.object({
+            query: zod_1.z.string().describe('搜索关键词'),
+            maxResults: zod_1.z.number().optional().describe('返回结果数量，默认 5'),
+        }),
+    });
+    const generateMindMap = (0, tools_1.tool)(async ({ topic }) => {
+        const embedding = await knowledgeService.getEmbedding(topic);
+        const result = await vectorService.query(`kb_${knowledgeBaseId}`, embedding, 10);
+        const context = result.documents.length
+            ? `基于以下知识库内容生成思维导图：\n${result.documents.join('\n\n')}`
+            : `请基于通用知识生成关于"${topic}"的思维导图。`;
+        return JSON.stringify({
+            type: 'mindmap',
+            topic,
+            context,
+            instruction: '请根据以上内容，生成一个 JSON 格式的思维导图，结构为：{ "topic": "中心主题", "children": [{ "topic": "子主题", "children": [...] }] }，不要包含其他文字，只返回 JSON。',
+        });
+    }, {
+        name: 'generate_mind_map',
+        description: '根据知识库内容生成思维导图。当用户要求"画思维导图"、"生成脑图"、"整理知识结构"时使用。',
+        schema: zod_1.z.object({
+            topic: zod_1.z.string().describe('思维导图的中心主题'),
+        }),
+    });
+    return [
+        searchKnowledge,
+        getDocumentList,
+        getDocumentContent,
+        webSearchTool,
+        generateMindMap,
+    ];
 }
 //# sourceMappingURL=agent.tools.js.map

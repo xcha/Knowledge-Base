@@ -8,17 +8,26 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
 const app_service_1 = require("./app.service");
+const admin_service_1 = require("./admin/admin.service");
 let AppController = class AppController {
     appService;
-    constructor(appService) {
+    adminService;
+    constructor(appService, adminService) {
         this.appService = appService;
+        this.adminService = adminService;
     }
     getHello() {
         return this.appService.getHello();
+    }
+    initAdmin(body) {
+        return this.adminService.initAdmin(body.email, body.password);
     }
 };
 exports.AppController = AppController;
@@ -28,8 +37,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", String)
 ], AppController.prototype, "getHello", null);
+__decorate([
+    (0, common_1.Post)('init-admin'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AppController.prototype, "initAdmin", null);
 exports.AppController = AppController = __decorate([
     (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [app_service_1.AppService])
+    __metadata("design:paramtypes", [app_service_1.AppService,
+        admin_service_1.AdminService])
 ], AppController);
 //# sourceMappingURL=app.controller.js.map
